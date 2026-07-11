@@ -91,7 +91,7 @@ async function fetchSashaWavesSentences(token: string, stage: number): Promise<S
   return body.sentences ?? [];
 }
 
-async function readManualConfig(lessonNumber: number): Promise<ManualConfig | null> {
+export async function readManualConfig(lessonNumber: number): Promise<ManualConfig | null> {
   const configPath = path.resolve(process.cwd(), "scratch", `lesson-${lessonNumber}-manual-config.json`);
   try {
     const raw = await readFile(configPath, "utf8");
@@ -130,6 +130,129 @@ async function createAirtableRecords(
       throw new Error(`Airtable write failed: ${res.status} ${await res.text()}`);
     }
   }
+}
+
+async function updateAirtableRecords(
+  records: { id: string; fields: Record<string, unknown> }[],
+  writeKey: string,
+): Promise<void> {
+  for (let i = 0; i < records.length; i += 10) {
+    const batch = records.slice(i, i + 10);
+    const res = await fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${writeKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ typecast: true, records: batch }),
+    });
+    if (!res.ok) {
+      throw new Error(`Airtable update failed: ${res.status} ${await res.text()}`);
+    }
+  }
+}
+
+export type LessonSentence = {
+  id: string;
+  order: number;
+  amis: string;
+  zh: string;
+  section: string | null;
+};
+
+export async function getLessonSentences(lessonNumber: number): Promise<LessonSentence[]> {
+  const readKey = process.env.AIRTABLE_API_KEY;
+  if (!readKey) throw new Error("Missing AIRTABLE_API_KEY in .env.local");
+
+  const result: LessonSentence[] = [];
+  let offset: string | undefined;
+  do {
+    const url = new URL(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`);
+    if (offset) url.searchParams.set("offset", offset);
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${readKey}` } });
+    if (!res.ok) throw new Error(`Airtable read failed: ${res.status} ${await res.text()}`);
+    const body = await res.json();
+    for (const record of body.records) {
+      if (parseRekadNumber(record.fields.Lesson ?? "") === lessonNumber) {
+        result.push({
+          id: record.id,
+          order: record.fields.Order ?? 0,
+          amis: record.fields.Amis ?? "",
+          zh: record.fields.Zh ?? "",
+          section: record.fields.Section ?? null,
+        });
+      }
+    }
+    offset = body.offset;
+  } while (offset);
+
+  return result.sort((a, b) => a.order - b.order);
+}
+
+export async function getMaxRekadNumberPublic(): Promise<number> {
+  const readKey = process.env.AIRTABLE_API_KEY;
+  if (!readKey) throw new Error("Missing AIRTABLE_API_KEY in .env.local");
+  return getMaxRekadNumber(readKey);
+}
+
+export type SectionEntry = { name: string; title: string; order: number | null };
+
+export type ApplySectionsResult =
+  | { status: "ok"; sectioned: number; renamedLesson: boolean }
+  | { status: "error"; message: string };
+
+export async function applySectionsToLesson(
+  lessonNumber: number,
+  classDate: string,
+  entries: SectionEntry[],
+): Promise<ApplySectionsResult> {
+  const writeKey = process.env.AIRTABLE_WRITE_KEY;
+  if (!writeKey) return { status: "error", message: "Missing AIRTABLE_WRITE_KEY in .env.local" };
+
+  const sentences = await getLessonSentences(lessonNumber);
+  const byOrder = new Map(sentences.map((s) => [s.order, s]));
+
+  const updatesById = new Map<string, Record<string, unknown>>();
+  const setField = (id: string, field: string, value: unknown) => {
+    updatesById.set(id, { ...(updatesById.get(id) ?? {}), [field]: value });
+  };
+
+  let sectioned = 0;
+  for (const entry of entries) {
+    if (entry.order === null) continue;
+    const sentence = byOrder.get(entry.order);
+    if (!sentence) continue;
+    setField(sentence.id, FIELD.section, entry.title ? `${entry.name} - ${entry.title}` : entry.name);
+    sectioned += 1;
+  }
+
+  const renamedLesson = classDate.trim().length > 0;
+  if (renamedLesson) {
+    const newLessonName = `Rekad ${lessonNumber} - ${classDate.trim()}`;
+    for (const sentence of sentences) setField(sentence.id, FIELD.lesson, newLessonName);
+  }
+
+  const updates = [...updatesById.entries()].map(([id, fields]) => ({ id, fields }));
+  await updateAirtableRecords(updates, writeKey);
+
+  await writeManualConfig(lessonNumber, classDate, entries);
+
+  return { status: "ok", sectioned, renamedLesson };
+}
+
+async function writeManualConfig(lessonNumber: number, classDate: string, entries: SectionEntry[]): Promise<void> {
+  const configPath = path.resolve(process.cwd(), "scratch", `lesson-${lessonNumber}-manual-config.json`);
+  const config: ManualConfig = {
+    lesson: `Rekad ${lessonNumber}`,
+    classDate,
+    sectionTitles: Object.fromEntries(entries.map((e) => [e.name, e.title])),
+    sections: Object.fromEntries(
+      entries.filter((e) => e.order !== null).map((e) => [e.name, e.order as number]),
+    ),
+  };
+  const { writeFile, mkdir } = await import("node:fs/promises");
+  await mkdir(path.dirname(configPath), { recursive: true });
+  await writeFile(configPath, JSON.stringify(config, null, 2));
 }
 
 export async function checkAndImportNextLesson(): Promise<ImportResult> {
