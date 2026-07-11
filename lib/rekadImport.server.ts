@@ -1,0 +1,191 @@
+import "server-only";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+const BASE_ID = "app8MvGUBu4Xg9HOR";
+const TABLE_ID = "tbl0IiPCsGxOZAcBL";
+const SASHAWAVES_ORIGIN = "https://sashawaves.com";
+
+const FIELD = {
+  amis: "fldf3FkHop0VAESgt",
+  zh: "fldmRiYjgNGbZmq1T",
+  lesson: "fld4yxPbhZVjoGloQ",
+  section: "fldno1ijNa7j5RjsL",
+  order: "fldWlCopIRNPrFQbC",
+  audio: "fldAuhWjtoR8w7TVS",
+  pairTag: "fldycoz7nks3aFw5l",
+};
+
+type SashaWavesSentence = {
+  sentence: string;
+  chineseTrans: string;
+  audioUrl: string;
+};
+
+export type ManualConfig = {
+  lesson: string;
+  classDate: string;
+  sectionTitles: Record<string, string>;
+  sections: Record<string, number | number[]>;
+};
+
+export type ImportResult =
+  | { status: "unavailable"; lessonNumber: number }
+  | {
+      status: "imported";
+      lessonNumber: number;
+      lessonName: string;
+      count: number;
+      sectioned: number;
+      unsectioned: number;
+      usedConfig: boolean;
+    }
+  | { status: "error"; message: string };
+
+// Every sentence's Lesson field is a single-select string like "Rekad 1 - 26/05/27"
+// or (before a class date is set) just "Rekad 1". We only need the number.
+function parseRekadNumber(lessonName: string): number | null {
+  const match = /^Rekad\s+(\d+)/i.exec(lessonName.trim());
+  return match ? Number(match[1]) : null;
+}
+
+async function getMaxRekadNumber(readKey: string): Promise<number> {
+  let max = 0;
+  let offset: string | undefined;
+  do {
+    const url = new URL(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`);
+    url.searchParams.set("fields[]", "Lesson");
+    if (offset) url.searchParams.set("offset", offset);
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${readKey}` } });
+    if (!res.ok) throw new Error(`Airtable read failed: ${res.status} ${await res.text()}`);
+    const body = await res.json();
+    for (const record of body.records) {
+      const n = parseRekadNumber(record.fields.Lesson ?? "");
+      if (n !== null && n > max) max = n;
+    }
+    offset = body.offset;
+  } while (offset);
+  return max;
+}
+
+async function sashaWavesAuth(code: string): Promise<string> {
+  const res = await fetch(`${SASHAWAVES_ORIGIN}/api/rekad-auth`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  const body = await res.json();
+  if (!res.ok || !body?.success || !body?.token) {
+    throw new Error("SashaWaves activation failed.");
+  }
+  return body.token;
+}
+
+async function fetchSashaWavesSentences(token: string, stage: number): Promise<SashaWavesSentence[]> {
+  const res = await fetch(
+    `${SASHAWAVES_ORIGIN}/api/rekad-content?dialect=malan&type=sentence&stage=${stage}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`SashaWaves content fetch failed: ${res.status}`);
+  const body = await res.json();
+  return body.sentences ?? [];
+}
+
+async function readManualConfig(lessonNumber: number): Promise<ManualConfig | null> {
+  const configPath = path.resolve(process.cwd(), "scratch", `lesson-${lessonNumber}-manual-config.json`);
+  try {
+    const raw = await readFile(configPath, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+// config.sections maps a section name to one Order number or several -- flip
+// it into order -> section name for quick lookup while building records.
+function buildOrderToSectionMap(config: ManualConfig): Map<number, string> {
+  const map = new Map<number, string>();
+  for (const [sectionName, orders] of Object.entries(config.sections ?? {})) {
+    const list = Array.isArray(orders) ? orders : [orders];
+    for (const order of list) map.set(order, sectionName);
+  }
+  return map;
+}
+
+async function createAirtableRecords(
+  records: { fields: Record<string, unknown> }[],
+  writeKey: string,
+): Promise<void> {
+  for (let i = 0; i < records.length; i += 10) {
+    const batch = records.slice(i, i + 10);
+    const res = await fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${writeKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ typecast: true, records: batch }),
+    });
+    if (!res.ok) {
+      throw new Error(`Airtable write failed: ${res.status} ${await res.text()}`);
+    }
+  }
+}
+
+export async function checkAndImportNextLesson(): Promise<ImportResult> {
+  const readKey = process.env.AIRTABLE_API_KEY;
+  const writeKey = process.env.AIRTABLE_WRITE_KEY;
+  const rekadCode = process.env.SASHAWAVES_REKAD_CODE;
+  if (!readKey || !writeKey || !rekadCode) {
+    return {
+      status: "error",
+      message: "Missing AIRTABLE_API_KEY, AIRTABLE_WRITE_KEY, or SASHAWAVES_REKAD_CODE in .env.local",
+    };
+  }
+
+  const currentMax = await getMaxRekadNumber(readKey);
+  const nextNumber = currentMax + 1;
+
+  const authToken = await sashaWavesAuth(rekadCode);
+  const sentences = await fetchSashaWavesSentences(authToken, nextNumber);
+  if (sentences.length === 0) {
+    return { status: "unavailable", lessonNumber: nextNumber };
+  }
+
+  const config = await readManualConfig(nextNumber);
+  const orderToSection = config ? buildOrderToSectionMap(config) : new Map<number, string>();
+  const lessonName =
+    config?.classDate ? `Rekad ${nextNumber} - ${config.classDate}` : `Rekad ${nextNumber}`;
+
+  let sectioned = 0;
+  const records = sentences.map((s, index) => {
+    const order = index + 1;
+    const sectionName = orderToSection.get(order);
+    const fields: Record<string, unknown> = {
+      [FIELD.amis]: s.sentence,
+      [FIELD.zh]: s.chineseTrans,
+      [FIELD.lesson]: lessonName,
+      [FIELD.order]: order,
+      [FIELD.pairTag]: s.sentence.includes("?") ? "Q" : "A",
+    };
+    if (s.audioUrl) fields[FIELD.audio] = [{ url: s.audioUrl }];
+    if (sectionName && config) {
+      const title = config.sectionTitles?.[sectionName];
+      fields[FIELD.section] = title ? `${sectionName} - ${title}` : sectionName;
+      sectioned += 1;
+    }
+    return { fields };
+  });
+
+  await createAirtableRecords(records, writeKey);
+
+  return {
+    status: "imported",
+    lessonNumber: nextNumber,
+    lessonName,
+    count: records.length,
+    sectioned,
+    unsectioned: records.length - sectioned,
+    usedConfig: config !== null,
+  };
+}

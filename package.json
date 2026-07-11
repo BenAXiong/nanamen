@@ -10,8 +10,7 @@
     "start": "next start",
     "lint": "eslint",
     "content:sync": "node scripts/sync-content.mjs",
-    "content:airtable-import": "node scripts/convert-airtable-import.mjs",
-    "content:rekad1-import": "node scripts/build-rekad1-import.mjs"
+    "content:airtable-import": "node scripts/convert-airtable-import.mjs"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
@@ -19,7 +18,8 @@
     "music-metadata": "^11.13.0",
     "next": "16.2.10",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
