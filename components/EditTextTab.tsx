@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { saveTextEdits } from "@/app/edit/actions";
 import type { LessonSentence, SaveResult } from "@/lib/rekadImport.server";
 
 type EditState = Record<string, { amis: string; zh: string }>;
 
 export function EditTextTab({ sentences }: { sentences: LessonSentence[] }) {
+  const router = useRouter();
   const initial = useMemo(
     () => Object.fromEntries(sentences.map((s) => [s.id, { amis: s.amis, zh: s.zh }])),
     [sentences],
@@ -24,7 +26,9 @@ export function EditTextTab({ sentences }: { sentences: LessonSentence[] }) {
       .filter((s) => edits[s.id].amis !== s.amis || edits[s.id].zh !== s.zh)
       .map((s) => ({ id: s.id, amis: edits[s.id].amis, zh: edits[s.id].zh }));
     startTransition(async () => {
-      setResult(await saveTextEdits(changed));
+      const saveResult = await saveTextEdits(changed);
+      setResult(saveResult);
+      if (saveResult.status === "ok") router.refresh();
     });
   };
 

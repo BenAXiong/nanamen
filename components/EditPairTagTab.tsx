@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { savePairTagEdits } from "@/app/edit/actions";
 import type { LessonSentence, SaveResult } from "@/lib/rekadImport.server";
 
@@ -15,6 +16,7 @@ function parseChoice(pairTag: string | null): Choice {
 }
 
 export function EditPairTagTab({ sentences }: { sentences: LessonSentence[] }) {
+  const router = useRouter();
   const [choices, setChoices] = useState<Record<string, Choice>>(() =>
     Object.fromEntries(sentences.map((s) => [s.id, parseChoice(s.pairTag)])),
   );
@@ -51,7 +53,9 @@ export function EditPairTagTab({ sentences }: { sentences: LessonSentence[] }) {
   const onSave = () => {
     const edits = sentences.map((s) => ({ id: s.id, pairTag: choices[s.id] ? labels[s.id] : null }));
     startTransition(async () => {
-      setResult(await savePairTagEdits(edits));
+      const saveResult = await savePairTagEdits(edits);
+      setResult(saveResult);
+      if (saveResult.status === "ok") router.refresh();
     });
   };
 
