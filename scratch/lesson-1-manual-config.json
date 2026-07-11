@@ -1,14 +1,20 @@
 {
   "lesson": "Rekad 1",
   "classDate": "26/05/27",
-  "_classDateFormat": "YY/MM/DD, e.g. 26/05/27",
+  "sectionTitles": {
+    "Sakacecay": "入門詞彙・基本問候",
+    "Sakatosa": "日常對話・家庭稱謂",
+    "Sakatolo": "動詞變化・否定句",
+    "Sakasepat": "進階句型・複合詞",
+    "Sakalima": "深度文化・敬語",
+    "Sakaenem": "文化場景・即興表達"
+  },
   "sections": {
     "Sakacecay": 1,
-    "Sakatosa": 2,
-    "Sakatolo": 3,
-    "Sakasepat": 4,
-    "Sakalima": 5,
-    "Sakaenem": 6
-  },
-  "_sectionsNote": "Each value is the Order number (from lesson-1-airtable-import.csv) of the sentence(s) that belong in that section -- a single number, or an array like [3, 27] for more than one. This is real data, not a placeholder: edit it, then ask Claude to apply it -- Airtable's Section field gets set to \"<key> - <title>\" (titles from lesson-1-section-seed.csv) for exactly the Order numbers you list, and stays blank for everything else."
+    "Sakatosa": 9,
+    "Sakatolo": 17,
+    "Sakasepat": 23,
+    "Sakalima": 37,
+    "Sakaenem": 47
+  }
 }

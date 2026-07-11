@@ -41,10 +41,16 @@ export function SectionAssignForm({
   lessonNumber,
   sentences,
   initialConfig,
+  onSuccessMode = "redirect",
 }: {
   lessonNumber: number;
   sentences: LessonSentence[];
   initialConfig: ManualConfig | null;
+  // "redirect": go to "/" (the /import flow -- you're done, go see it).
+  // "refresh": stay put and re-fetch server data in place (the /edit flow --
+  // other tabs on the same page need the update too, navigating away would
+  // lose your spot).
+  onSuccessMode?: "redirect" | "refresh";
 }) {
   const router = useRouter();
   const [classDate, setClassDate] = useState(initialConfig?.classDate ?? "");
@@ -66,7 +72,8 @@ export function SectionAssignForm({
     startTransition(async () => {
       const result: ApplySectionsResult = await applySections(lessonNumber, classDate, entries);
       if (result.status === "ok") {
-        router.push("/");
+        if (onSuccessMode === "redirect") router.push("/");
+        else router.refresh();
       } else {
         setError(result.message);
       }

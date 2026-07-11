@@ -21,7 +21,12 @@ export default async function RekadImportPage() {
 
       {maxLesson > 0 ? (
         <div className="mt-4 border-t border-stone-200 pt-4 dark:border-stone-800">
-          <SectionAssignForm lessonNumber={maxLesson} sentences={sentences} initialConfig={initialConfig} />
+          <SectionAssignForm
+            lessonNumber={maxLesson}
+            sentences={sentences}
+            initialConfig={initialConfig}
+            onSuccessMode="redirect"
+          />
         </div>
       ) : null}
     </Screen>
