@@ -158,13 +158,13 @@ export type LessonSentence = {
   amis: string;
   zh: string;
   section: string | null;
+  pairTag: string | null;
 };
 
-export async function getLessonSentences(lessonNumber: number): Promise<LessonSentence[]> {
-  const readKey = process.env.AIRTABLE_API_KEY;
-  if (!readKey) throw new Error("Missing AIRTABLE_API_KEY in .env.local");
-
-  const result: LessonSentence[] = [];
+async function fetchAllRecords(readKey: string): Promise<
+  { id: string; fields: Record<string, unknown> }[]
+> {
+  const result: { id: string; fields: Record<string, unknown> }[] = [];
   let offset: string | undefined;
   do {
     const url = new URL(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`);
@@ -172,20 +172,30 @@ export async function getLessonSentences(lessonNumber: number): Promise<LessonSe
     const res = await fetch(url, { headers: { Authorization: `Bearer ${readKey}` } });
     if (!res.ok) throw new Error(`Airtable read failed: ${res.status} ${await res.text()}`);
     const body = await res.json();
-    for (const record of body.records) {
-      if (parseRekadNumber(record.fields.Lesson ?? "") === lessonNumber) {
-        result.push({
-          id: record.id,
-          order: record.fields.Order ?? 0,
-          amis: record.fields.Amis ?? "",
-          zh: record.fields.Zh ?? "",
-          section: record.fields.Section ?? null,
-        });
-      }
-    }
+    result.push(...body.records);
     offset = body.offset;
   } while (offset);
+  return result;
+}
 
+export async function getLessonSentences(lessonNumber: number): Promise<LessonSentence[]> {
+  const readKey = process.env.AIRTABLE_API_KEY;
+  if (!readKey) throw new Error("Missing AIRTABLE_API_KEY in .env.local");
+
+  const records = await fetchAllRecords(readKey);
+  const result: LessonSentence[] = [];
+  for (const record of records) {
+    if (parseRekadNumber((record.fields.Lesson as string) ?? "") === lessonNumber) {
+      result.push({
+        id: record.id,
+        order: (record.fields.Order as number) ?? 0,
+        amis: (record.fields.Amis as string) ?? "",
+        zh: (record.fields.Zh as string) ?? "",
+        section: (record.fields.Section as string) ?? null,
+        pairTag: (record.fields["Pair Tag"] as string) ?? null,
+      });
+    }
+  }
   return result.sort((a, b) => a.order - b.order);
 }
 
@@ -193,6 +203,24 @@ export async function getMaxRekadNumberPublic(): Promise<number> {
   const readKey = process.env.AIRTABLE_API_KEY;
   if (!readKey) throw new Error("Missing AIRTABLE_API_KEY in .env.local");
   return getMaxRekadNumber(readKey);
+}
+
+export type RekadLesson = { number: number; name: string };
+
+export async function getAllRekadLessons(): Promise<RekadLesson[]> {
+  const readKey = process.env.AIRTABLE_API_KEY;
+  if (!readKey) throw new Error("Missing AIRTABLE_API_KEY in .env.local");
+
+  const records = await fetchAllRecords(readKey);
+  const byNumber = new Map<number, string>();
+  for (const record of records) {
+    const lessonName = (record.fields.Lesson as string) ?? "";
+    const n = parseRekadNumber(lessonName);
+    if (n !== null) byNumber.set(n, lessonName);
+  }
+  return [...byNumber.entries()]
+    .map(([number, name]) => ({ number, name }))
+    .sort((a, b) => a.number - b.number);
 }
 
 export type SectionEntry = { name: string; title: string; order: number | null };
@@ -265,6 +293,38 @@ async function writeManualConfig(lessonNumber: number, classDate: string, entrie
   const { writeFile, mkdir } = await import("node:fs/promises");
   await mkdir(path.dirname(configPath), { recursive: true });
   await writeFile(configPath, JSON.stringify(config, null, 2));
+}
+
+export type SaveResult = { status: "ok"; updated: number } | { status: "error"; message: string };
+
+export async function saveSentenceEdits(
+  edits: { id: string; amis: string; zh: string }[],
+): Promise<SaveResult> {
+  const writeKey = process.env.AIRTABLE_WRITE_KEY;
+  if (!writeKey) return { status: "error", message: "Missing AIRTABLE_WRITE_KEY in .env.local" };
+  if (edits.length === 0) return { status: "ok", updated: 0 };
+
+  const records = edits.map((e) => ({
+    id: e.id,
+    fields: { [FIELD.amis]: e.amis, [FIELD.zh]: e.zh },
+  }));
+  await updateAirtableRecords(records, writeKey);
+  return { status: "ok", updated: records.length };
+}
+
+export async function savePairTags(
+  edits: { id: string; pairTag: string | null }[],
+): Promise<SaveResult> {
+  const writeKey = process.env.AIRTABLE_WRITE_KEY;
+  if (!writeKey) return { status: "error", message: "Missing AIRTABLE_WRITE_KEY in .env.local" };
+  if (edits.length === 0) return { status: "ok", updated: 0 };
+
+  const records = edits.map((e) => ({
+    id: e.id,
+    fields: { [FIELD.pairTag]: e.pairTag },
+  }));
+  await updateAirtableRecords(records, writeKey);
+  return { status: "ok", updated: records.length };
 }
 
 export async function checkAndImportNextLesson(): Promise<ImportResult> {
