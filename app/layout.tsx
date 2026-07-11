@@ -31,7 +31,14 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-stone-50 dark:bg-stone-950">{children}</body>
+      {/* suppressHydrationWarning: browser extensions (e.g. asbplayer) inject
+          attributes into <body> before hydration; not a real mismatch. */}
+      <body
+        className="flex min-h-full flex-col bg-stone-50 dark:bg-stone-950"
+        suppressHydrationWarning
+      >
+        {children}
+      </body>
     </html>
   );
 }
