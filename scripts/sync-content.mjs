@@ -2,11 +2,17 @@
 // app reads at runtime. Runs automatically via the `predev`/`prebuild` npm hooks
 // (see DEC-CONTENT01) -- content edited in Airtable shows up on the next dev
 // server start / deploy, no manual step required.
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile, access } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseBuffer } from "music-metadata";
 
-const ROOT = path.resolve(import.meta.dirname, "..");
+// process.cwd() rather than import.meta.dirname: both npm-script invocation
+// (predev/prebuild/content:sync, always run from the project root) and the
+// dev-only import from app/layout.tsx rely on this resolving correctly, and
+// webpack's RSC bundling of this module (the layout import) doesn't populate
+// import.meta.dirname the way plain `node scripts/sync-content.mjs` does.
+const ROOT = process.cwd();
 const BASE_ID = "app8MvGUBu4Xg9HOR";
 const TABLE_ID = "tbl0IiPCsGxOZAcBL";
 const AUDIO_DIR = path.join(ROOT, "public", "audio");
@@ -106,7 +112,31 @@ function audioExtension(attachment) {
   return ".mp3";
 }
 
+async function fileExists(p) {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// A repeat sync (e.g. triggered on every dev-server page load, see
+// app/layout.tsx) re-fetches Airtable's records every time -- cheap -- but
+// must not re-download audio it already has on disk, or every navigation
+// would pay for 50-150 attachment fetches it doesn't need.
 async function downloadAudio(attachment, destPath) {
+  if (await fileExists(destPath)) {
+    try {
+      const buffer = await readFile(destPath);
+      const meta = await parseBuffer(buffer, attachment.type);
+      return meta.format.duration ?? null;
+    } catch (err) {
+      console.warn(`  warning: could not read duration for existing ${destPath}: ${err.message}`);
+      return null;
+    }
+  }
+
   const res = await fetch(attachment.url);
   if (!res.ok) throw new Error(`Audio download failed (${res.status}): ${attachment.url}`);
   const buffer = Buffer.from(await res.arrayBuffer());
@@ -123,7 +153,7 @@ async function downloadAudio(attachment, destPath) {
   return durationSeconds;
 }
 
-async function main() {
+export async function syncContent() {
   await loadLocalEnv();
   if (!process.env.AIRTABLE_API_KEY) {
     throw new Error("AIRTABLE_API_KEY is not set (checked process.env and .env.local)");
@@ -225,7 +255,13 @@ function validatePairing(section) {
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Only run as a CLI entry point (predev/prebuild/content:sync) -- when this
+// module is imported instead (app/layout.tsx's dev-only auto-resync), the
+// importer awaits syncContent() itself and handles its own errors.
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  syncContent().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

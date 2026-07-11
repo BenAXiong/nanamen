@@ -1,8 +1,8 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Screen } from "@/components/Screen";
 import { LessonPicker } from "@/components/LessonPicker";
 import { EditTabs } from "@/components/EditTabs";
+import { SyncContentButton } from "@/components/SyncContentButton";
 import { getAllRekadLessons, getLessonSentences, readManualConfig } from "@/lib/rekadImport.server";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +12,6 @@ export default async function EditPage({
 }: {
   searchParams: Promise<{ lesson?: string }>;
 }) {
-  if (process.env.NODE_ENV !== "development") notFound();
-
   const { lesson } = await searchParams;
   const lessons = await getAllRekadLessons();
 
@@ -43,6 +41,7 @@ export default async function EditPage({
           >
             Import
           </Link>
+          <SyncContentButton />
         </div>
         <EditTabs lessonNumber={selected.number} sentences={sentences} initialConfig={initialConfig} />
       </div>

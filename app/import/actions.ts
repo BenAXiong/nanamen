@@ -8,18 +8,11 @@ import {
   type SectionEntry,
 } from "@/lib/rekadImport.server";
 
-// Dev-only: never lets this write path run in a deployed/production build, so
-// it can't become a live public write endpoint if the app is ever deployed.
-function requireDev<T>(fallback: T): T | null {
-  return process.env.NODE_ENV === "development" ? null : fallback;
-}
+// No dev-only gate here (and no auth) -- this needs to work from a deployed
+// production build so Ben can edit content from his phone while away. The
+// URL itself is the only protection; that's a deliberate accepted tradeoff.
 
 export async function runRekadImport(): Promise<ImportResult> {
-  const blocked = requireDev<ImportResult>({
-    status: "error",
-    message: "Rekad import only runs in local development (npm run dev).",
-  });
-  if (blocked) return blocked;
   try {
     return await checkAndImportNextLesson();
   } catch (err) {
@@ -32,11 +25,6 @@ export async function applySections(
   classDate: string,
   entries: SectionEntry[],
 ): Promise<ApplySectionsResult> {
-  const blocked = requireDev<ApplySectionsResult>({
-    status: "error",
-    message: "Rekad import only runs in local development (npm run dev).",
-  });
-  if (blocked) return blocked;
   try {
     return await applySectionsToLesson(lessonNumber, classDate, entries);
   } catch (err) {

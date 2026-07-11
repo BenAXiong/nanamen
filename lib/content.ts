@@ -1,5 +1,3 @@
-import lessonsData from "@/content/generated/sentences.json";
-
 export type PairRole = "question" | "answer";
 
 export type Sentence = {
@@ -37,26 +35,6 @@ export type Pair = {
   answer: Sentence;
 };
 
-const lessons = lessonsData as Lesson[];
-
-export function getLessons(): Lesson[] {
-  return lessons;
-}
-
-export function getLesson(lessonSlug: string): Lesson | undefined {
-  return lessons.find((lesson) => lesson.slug === lessonSlug);
-}
-
-export function getSection(
-  lessonSlug: string,
-  sectionSlug: string,
-): { lesson: Lesson; section: Section } | undefined {
-  const lesson = getLesson(lessonSlug);
-  const section = lesson?.sections.find((s) => s.slug === sectionSlug);
-  if (!lesson || !section) return undefined;
-  return { lesson, section };
-}
-
 export function pairId(lessonSlug: string, sectionSlug: string, pairNumber: number): string {
   return `${lessonSlug}/${sectionSlug}/${pairNumber}`;
 }
@@ -65,6 +43,10 @@ export function pairId(lessonSlug: string, sectionSlug: string, pairNumber: numb
 // scripts/sync-content.mjs's validatePairing, which warns (not throws) on
 // incomplete pairs at sync time. Silently dropping them here keeps Fluency
 // mode from choking on in-progress content.
+//
+// Pure and data-only (no filesystem/Airtable access) so it's safe to import
+// from client components -- see lib/lessons.server.ts for loading the
+// underlying Lesson[] data, which is server-only.
 export function getPairs(lesson: Lesson, section: Section): Pair[] {
   const byNumber = new Map<number, { question?: Sentence; answer?: Sentence }>();
   for (const sentence of section.sentences) {
@@ -88,12 +70,4 @@ export function getPairs(lesson: Lesson, section: Section): Pair[] {
     });
   }
   return pairs;
-}
-
-export function getAllPairs(): Pair[] {
-  return lessons.flatMap((lesson) => lesson.sections.flatMap((section) => getPairs(lesson, section)));
-}
-
-export function getPairById(id: string): Pair | undefined {
-  return getAllPairs().find((pair) => pair.id === id);
 }

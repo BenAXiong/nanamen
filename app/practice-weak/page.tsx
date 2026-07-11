@@ -1,4 +1,4 @@
-import { getAllPairs, getLesson } from "@/lib/content";
+import { getAllPairs, getLesson } from "@/lib/lessons.server";
 import { Screen, ScreenHeader } from "@/components/Screen";
 import { PracticeWeakClient } from "@/components/PracticeWeakClient";
 

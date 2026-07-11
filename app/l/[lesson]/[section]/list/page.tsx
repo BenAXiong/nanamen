@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getSection } from "@/lib/content";
+import { getSection } from "@/lib/lessons.server";
 import { Screen, ScreenHeader } from "@/components/Screen";
 import { SentenceListClient } from "@/components/SentenceListClient";
 

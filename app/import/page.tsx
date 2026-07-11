@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { Screen } from "@/components/Screen";
 import { RekadImportButton } from "@/components/RekadImportButton";
 import { SectionAssignForm } from "@/components/SectionAssignForm";
@@ -7,8 +6,6 @@ import { getLessonSentences, getMaxRekadNumberPublic, readManualConfig } from "@
 export const dynamic = "force-dynamic";
 
 export default async function RekadImportPage() {
-  if (process.env.NODE_ENV !== "development") notFound();
-
   const maxLesson = await getMaxRekadNumberPublic();
   const sentences = maxLesson > 0 ? await getLessonSentences(maxLesson) : [];
   const initialConfig = maxLesson > 0 ? await readManualConfig(maxLesson) : null;

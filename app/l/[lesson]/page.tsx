@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getLesson, getPairs } from "@/lib/content";
+import { getPairs } from "@/lib/content";
+import { getLesson } from "@/lib/lessons.server";
 import { Screen, ScreenHeader } from "@/components/Screen";
 
 export default async function LessonPage({ params }: { params: Promise<{ lesson: string }> }) {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getLessons } from "@/lib/content";
+import { getLessons } from "@/lib/lessons.server";
 import { Screen } from "@/components/Screen";
 import { PracticeWeakEntry } from "@/components/PracticeWeakEntry";
 
