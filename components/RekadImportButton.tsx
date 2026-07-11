@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { runRekadImport } from "@/app/admin/rekad-import/actions";
+import { runRekadImport } from "@/app/import/actions";
 import type { ImportResult } from "@/lib/rekadImport.server";
 
 export function RekadImportButton() {

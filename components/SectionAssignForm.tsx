@@ -1,10 +1,24 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { applySections } from "@/app/admin/rekad-import/actions";
+import { applySections } from "@/app/import/actions";
 import type { ApplySectionsResult, LessonSentence, ManualConfig } from "@/lib/rekadImport.server";
 
 const SECTION_NAMES = ["Sakacecay", "Sakatosa", "Sakatolo", "Sakasepat", "Sakalima", "Sakaenem"];
+
+// SashaWaves' own frontend bundle ships this as "DEFAULT_UNIT_SUBTITLES" --
+// the same 6 thematic buckets appear to be reused across lessons (different
+// sentences, same structure), so we pre-fill with these rather than making
+// Ben retype them every time. Still just a default: editable per lesson in
+// case a future one genuinely needs different titles.
+const DEFAULT_SECTION_TITLES: Record<string, string> = {
+  Sakacecay: "入門詞彙・基本問候",
+  Sakatosa: "日常對話・家庭稱謂",
+  Sakatolo: "動詞變化・否定句",
+  Sakasepat: "進階句型・複合詞",
+  Sakalima: "深度文化・敬語",
+  Sakaenem: "文化場景・即興表達",
+};
 
 type Row = { name: string; title: string; order: string };
 
@@ -14,7 +28,7 @@ function initialRows(config: ManualConfig | null): Row[] {
     const order = Array.isArray(orders) ? orders[0] : orders;
     return {
       name,
-      title: config?.sectionTitles?.[name] ?? "",
+      title: config?.sectionTitles?.[name] ?? DEFAULT_SECTION_TITLES[name] ?? "",
       order: order != null ? String(order) : "",
     };
   });
