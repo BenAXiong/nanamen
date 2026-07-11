@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Screen } from "@/components/Screen";
 import { LessonPicker } from "@/components/LessonPicker";
 import { EditTabs } from "@/components/EditTabs";
@@ -34,7 +35,15 @@ export default async function EditPage({
   return (
     <Screen>
       <div className="flex flex-col gap-3 pt-4">
-        <LessonPicker lessons={lessons} selected={selected.number} />
+        <div className="flex items-center gap-2">
+          <LessonPicker lessons={lessons} selected={selected.number} />
+          <Link
+            href="/import"
+            className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+          >
+            Import
+          </Link>
+        </div>
         <EditTabs lessonNumber={selected.number} sentences={sentences} initialConfig={initialConfig} />
       </div>
     </Screen>
