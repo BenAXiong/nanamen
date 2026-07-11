@@ -210,20 +210,32 @@ export async function applySectionsToLesson(
   if (!writeKey) return { status: "error", message: "Missing AIRTABLE_WRITE_KEY in .env.local" };
 
   const sentences = await getLessonSentences(lessonNumber);
-  const byOrder = new Map(sentences.map((s) => [s.order, s]));
 
   const updatesById = new Map<string, Record<string, unknown>>();
   const setField = (id: string, field: string, value: unknown) => {
     updatesById.set(id, { ...(updatesById.get(id) ?? {}), [field]: value });
   };
 
+  // Each entry's order is where that section *starts* -- it runs up to the
+  // next entry's start (by order), and the last one runs to the end of the
+  // lesson. So Sakacecay=1, Sakatosa=11 means Sakacecay covers 1-10, not just
+  // sentence 1.
+  const ranges = entries
+    .filter((e): e is SectionEntry & { order: number } => e.order !== null)
+    .sort((a, b) => a.order - b.order);
+
   let sectioned = 0;
-  for (const entry of entries) {
-    if (entry.order === null) continue;
-    const sentence = byOrder.get(entry.order);
-    if (!sentence) continue;
-    setField(sentence.id, FIELD.section, entry.title ? `${entry.name} - ${entry.title}` : entry.name);
-    sectioned += 1;
+  for (let i = 0; i < ranges.length; i++) {
+    const entry = ranges[i];
+    const start = entry.order;
+    const end = i + 1 < ranges.length ? ranges[i + 1].order : Infinity;
+    const sectionValue = entry.title ? `${entry.name} - ${entry.title}` : entry.name;
+    for (const sentence of sentences) {
+      if (sentence.order >= start && sentence.order < end) {
+        setField(sentence.id, FIELD.section, sectionValue);
+        sectioned += 1;
+      }
+    }
   }
 
   const renamedLesson = classDate.trim().length > 0;
