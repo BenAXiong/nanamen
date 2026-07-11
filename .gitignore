@@ -41,6 +41,10 @@ yarn-error.log*
 /public/audio/*/
 !/public/audio/.gitkeep
 
+# local staging area for content conversion/import files
+/scratch/*
+!/scratch/README.md
+
 # next-pwa generated service worker
 /public/sw.js
 /public/swe-worker*.js

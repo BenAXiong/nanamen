@@ -11,6 +11,16 @@ const BASE_ID = "app8MvGUBu4Xg9HOR";
 const TABLE_ID = "tbl0IiPCsGxOZAcBL";
 const AUDIO_DIR = path.join(ROOT, "public", "audio");
 const OUTPUT_FILE = path.join(ROOT, "content", "generated", "sentences.json");
+const AUDIO_EXTENSIONS_BY_MIME = new Map([
+  ["audio/mpeg", ".mp3"],
+  ["audio/mp3", ".mp3"],
+  ["audio/wav", ".wav"],
+  ["audio/x-wav", ".wav"],
+  ["audio/webm", ".webm"],
+  ["audio/ogg", ".ogg"],
+  ["audio/mp4", ".m4a"],
+  ["audio/aac", ".aac"],
+]);
 
 async function loadLocalEnv() {
   if (process.env.AIRTABLE_API_KEY) return;
@@ -52,11 +62,24 @@ function slugify(label) {
     .replace(/(^-|-$)/g, "");
 }
 
+// Amis ordinals 1-9, used as a fallback for section names like "Sakacecay"
+// (Saka + cecay = "the first") that carry no trailing digit to sort by.
+const AMIS_ORDINALS = { cecay: 1, tosa: 2, tolo: 3, sepat: 4, lima: 5, enem: 6, pito: 7, falo: 8, siwa: 9 };
+
 // "Lesson 3" / "Section 6" -> 3 / 6, for stable numeric ordering regardless of
 // Airtable row order (we don't rely on the select field's internal choice order).
+// Falls back to Amis ordinal words, then pushes any "unsectioned" catch-all
+// bucket to the end rather than letting it tie at 0 with everything else.
 function trailingNumber(label) {
-  const match = label.match(/(\d+)\s*$/);
-  return match ? Number(match[1]) : 0;
+  const digitMatch = label.match(/(\d+)\s*$/);
+  if (digitMatch) return Number(digitMatch[1]);
+
+  const lower = label.toLowerCase();
+  for (const [word, n] of Object.entries(AMIS_ORDINALS)) {
+    if (lower.includes(word)) return n;
+  }
+  if (lower.includes("unsectioned")) return 999;
+  return 0;
 }
 
 function parsePairTag(tag) {
@@ -64,6 +87,23 @@ function parsePairTag(tag) {
   const match = /^([QA])(\d+)$/i.exec(tag.trim());
   if (!match) return { role: null, number: null };
   return { role: match[1].toUpperCase() === "Q" ? "question" : "answer", number: Number(match[2]) };
+}
+
+function audioExtension(attachment) {
+  const filenameExt = path.extname(attachment.filename ?? "").toLowerCase();
+  if (filenameExt) return filenameExt;
+
+  const mime = String(attachment.type ?? "").toLowerCase().split(";")[0].trim();
+  if (AUDIO_EXTENSIONS_BY_MIME.has(mime)) return AUDIO_EXTENSIONS_BY_MIME.get(mime);
+
+  try {
+    const urlExt = path.extname(new URL(attachment.url).pathname).toLowerCase();
+    if (urlExt) return urlExt;
+  } catch {
+    // Airtable normally provides absolute attachment URLs; keep a conservative fallback.
+  }
+
+  return ".mp3";
 }
 
 async function downloadAudio(attachment, destPath) {
@@ -74,7 +114,8 @@ async function downloadAudio(attachment, destPath) {
   await writeFile(destPath, buffer);
   let durationSeconds = null;
   try {
-    const meta = await parseBuffer(buffer, attachment.type);
+    const contentType = res.headers.get("content-type") ?? attachment.type;
+    const meta = await parseBuffer(buffer, contentType);
     durationSeconds = meta.format.duration ?? null;
   } catch (err) {
     console.warn(`  warning: could not read duration for ${destPath}: ${err.message}`);
@@ -112,9 +153,10 @@ async function main() {
     let durationSeconds = null;
     const attachment = f.Audio?.[0];
     if (attachment) {
-      const destPath = path.join(AUDIO_DIR, lessonSlug, sectionSlug, `${localId}.mp3`);
+      const extension = audioExtension(attachment);
+      const destPath = path.join(AUDIO_DIR, lessonSlug, sectionSlug, `${localId}${extension}`);
       durationSeconds = await downloadAudio(attachment, destPath);
-      audioUrl = `/audio/${lessonSlug}/${sectionSlug}/${localId}.mp3`;
+      audioUrl = `/audio/${lessonSlug}/${sectionSlug}/${localId}${extension}`;
     } else {
       console.warn(`  warning: no audio for "${f.Amis}" (${lessonSlug}/${sectionSlug})`);
     }

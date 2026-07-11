@@ -9,7 +9,9 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "content:sync": "node scripts/sync-content.mjs"
+    "content:sync": "node scripts/sync-content.mjs",
+    "content:airtable-import": "node scripts/convert-airtable-import.mjs",
+    "content:rekad1-import": "node scripts/build-rekad1-import.mjs"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
