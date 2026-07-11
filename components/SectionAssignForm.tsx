@@ -9,8 +9,8 @@ const SECTION_NAMES = ["Sakacecay", "Sakatosa", "Sakatolo", "Sakasepat", "Sakali
 // SashaWaves' own frontend bundle ships this as "DEFAULT_UNIT_SUBTITLES" --
 // the same 6 thematic buckets appear to be reused across lessons (different
 // sentences, same structure), so we pre-fill with these rather than making
-// Ben retype them every time. Still just a default: editable per lesson in
-// case a future one genuinely needs different titles.
+// Ben retype them every time. Still just a default: not shown/editable in
+// this compact form, but overridden by an existing config's titles if present.
 const DEFAULT_SECTION_TITLES: Record<string, string> = {
   Sakacecay: "入門詞彙・基本問候",
   Sakatosa: "日常對話・家庭稱謂",
@@ -65,53 +65,54 @@ export function SectionAssignForm({
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-stone-700 dark:text-stone-300">Class date (YY/MM/DD)</span>
-          <input
-            type="text"
-            value={classDate}
-            onChange={(e) => setClassDate(e.target.value)}
-            placeholder="26/05/27"
-            className="rounded-lg border border-stone-300 px-3 py-2 dark:border-stone-700 dark:bg-stone-900"
-          />
-        </label>
-
-        <div className="flex flex-col gap-2">
-          {rows.map((row, i) => (
-            <div key={row.name} className="grid grid-cols-[7rem_1fr_5rem] gap-2 text-sm">
-              <span className="flex items-center font-medium text-stone-700 dark:text-stone-300">{row.name}</span>
-              <input
-                type="text"
-                value={row.title}
-                onChange={(e) => updateRow(i, { title: e.target.value })}
-                placeholder="Section title (from the site)"
-                className="rounded-lg border border-stone-300 px-3 py-2 dark:border-stone-700 dark:bg-stone-900"
-              />
-              <input
-                type="number"
-                value={row.order}
-                onChange={(e) => updateRow(i, { order: e.target.value })}
-                placeholder="Order #"
-                className="rounded-lg border border-stone-300 px-3 py-2 dark:border-stone-700 dark:bg-stone-900"
-              />
-            </div>
-          ))}
+    <div className="flex flex-col gap-3">
+      <form onSubmit={onSubmit} className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium text-stone-700 dark:text-stone-300">
+            Assign sections — Rekad {lessonNumber}
+          </h2>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="rounded-lg bg-stone-900 px-4 py-1.5 text-sm font-medium text-white transition active:scale-95 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900"
+          >
+            {isPending ? "Applying…" : "Apply"}
+          </button>
         </div>
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-lg bg-stone-900 px-6 py-3 font-medium text-white transition active:scale-95 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900"
-        >
-          {isPending ? "Applying…" : "Apply sections"}
-        </button>
+        <input
+          type="text"
+          value={classDate}
+          onChange={(e) => setClassDate(e.target.value)}
+          placeholder="YY/MM/DD (class date)"
+          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm dark:border-stone-700 dark:bg-stone-900"
+        />
+
+        <div className="grid grid-cols-6 gap-1.5 text-center text-xs text-stone-400 dark:text-stone-600">
+          {rows.map((row, i) => (
+            <span key={row.name} title={row.name} className="cursor-default">
+              {i + 1}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-6 gap-1.5">
+          {rows.map((row, i) => (
+            <input
+              key={row.name}
+              type="number"
+              value={row.order}
+              onChange={(e) => updateRow(i, { order: e.target.value })}
+              placeholder="#"
+              title={row.name}
+              className="w-full rounded-lg border border-stone-300 px-1 py-1.5 text-center text-sm dark:border-stone-700 dark:bg-stone-900"
+            />
+          ))}
+        </div>
       </form>
 
       {result ? (
         <div
-          className={`rounded-lg border p-4 text-sm ${
+          className={`rounded-lg border p-3 text-sm ${
             result.status === "ok"
               ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
               : "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
@@ -123,29 +124,23 @@ export function SectionAssignForm({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-stone-700 dark:text-stone-300">
-          All {sentences.length} sentences (Rekad {lessonNumber})
-        </h2>
-        <div className="flex max-h-96 flex-col gap-1 overflow-y-auto rounded-lg border border-stone-200 dark:border-stone-800">
-          {sentences.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-start gap-3 border-b border-stone-100 px-3 py-2 text-sm last:border-b-0 dark:border-stone-800"
-            >
-              <span className="w-8 shrink-0 text-stone-400 dark:text-stone-600">{s.order}</span>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-stone-900 dark:text-stone-50">{s.amis}</div>
-                <div className="truncate text-stone-500 dark:text-stone-400">{s.zh}</div>
-              </div>
-              {s.section ? (
-                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
-                  {s.section}
-                </span>
-              ) : null}
-            </div>
-          ))}
-        </div>
+      <div className="max-h-96 overflow-y-auto rounded-lg border border-stone-200 dark:border-stone-800">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col className="w-8" />
+            <col style={{ width: "60%" }} />
+            <col />
+          </colgroup>
+          <tbody>
+            {sentences.map((s) => (
+              <tr key={s.id} className="border-b border-stone-100 last:border-b-0 dark:border-stone-800">
+                <td className="px-2 py-1.5 text-stone-400 dark:text-stone-600">{s.order}</td>
+                <td className="truncate px-2 py-1.5 text-stone-900 dark:text-stone-50">{s.amis}</td>
+                <td className="truncate px-2 py-1.5 text-stone-500 dark:text-stone-400">{s.zh}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
