@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { applySections } from "@/app/import/actions";
 import type { ApplySectionsResult, LessonSentence, ManualConfig } from "@/lib/rekadImport.server";
 
@@ -45,9 +46,10 @@ export function SectionAssignForm({
   sentences: LessonSentence[];
   initialConfig: ManualConfig | null;
 }) {
+  const router = useRouter();
   const [classDate, setClassDate] = useState(initialConfig?.classDate ?? "");
   const [rows, setRows] = useState<Row[]>(initialRows(initialConfig));
-  const [result, setResult] = useState<ApplySectionsResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const updateRow = (index: number, patch: Partial<Row>) => {
@@ -62,7 +64,12 @@ export function SectionAssignForm({
       order: row.order.trim() === "" ? null : Number(row.order),
     }));
     startTransition(async () => {
-      setResult(await applySections(lessonNumber, classDate, entries));
+      const result: ApplySectionsResult = await applySections(lessonNumber, classDate, entries);
+      if (result.status === "ok") {
+        router.push("/");
+      } else {
+        setError(result.message);
+      }
     });
   };
 
@@ -112,17 +119,9 @@ export function SectionAssignForm({
         </div>
       </form>
 
-      {result ? (
-        <div
-          className={`rounded-lg border p-3 text-sm ${
-            result.status === "ok"
-              ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
-              : "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
-          }`}
-        >
-          {result.status === "ok"
-            ? `Applied: ${result.sectioned} section(s) set${result.renamedLesson ? ", Lesson renamed with class date" : ""}.`
-            : result.message}
+      {error ? (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+          {error}
         </div>
       ) : null}
 

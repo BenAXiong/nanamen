@@ -1,0 +1,20 @@
+{
+  "lesson": "Rekad 2",
+  "classDate": "26/07/01",
+  "sectionTitles": {
+    "Sakacecay": "入門詞彙・基本問候",
+    "Sakatosa": "日常對話・家庭稱謂",
+    "Sakatolo": "動詞變化・否定句",
+    "Sakasepat": "進階句型・複合詞",
+    "Sakalima": "深度文化・敬語",
+    "Sakaenem": "文化場景・即興表達"
+  },
+  "sections": {
+    "Sakacecay": 1,
+    "Sakatosa": 11,
+    "Sakatolo": 22,
+    "Sakasepat": 30,
+    "Sakalima": 38,
+    "Sakaenem": 46
+  }
+}
