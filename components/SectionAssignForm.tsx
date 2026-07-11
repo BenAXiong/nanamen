@@ -124,7 +124,7 @@ export function SectionAssignForm({
         </div>
       ) : null}
 
-      <div className="max-h-96 overflow-y-auto rounded-lg border border-stone-200 dark:border-stone-800">
+      <div className="rounded-lg border border-stone-200 dark:border-stone-800">
         <table className="w-full table-fixed text-sm">
           <colgroup>
             <col className="w-8" />
