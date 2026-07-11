@@ -23,13 +23,15 @@ const DEFAULT_SECTION_TITLES: Record<string, string> = {
 type Row = { name: string; title: string; order: string };
 
 function initialRows(config: ManualConfig | null): Row[] {
-  return SECTION_NAMES.map((name) => {
+  return SECTION_NAMES.map((name, i) => {
     const orders = config?.sections?.[name];
     const order = Array.isArray(orders) ? orders[0] : orders;
+    // First section logically starts at sentence 1 when nothing else is set.
+    const fallbackOrder = i === 0 ? "1" : "";
     return {
       name,
       title: config?.sectionTitles?.[name] ?? DEFAULT_SECTION_TITLES[name] ?? "",
-      order: order != null ? String(order) : "",
+      order: order != null ? String(order) : fallbackOrder,
     };
   });
 }
