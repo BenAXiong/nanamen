@@ -36,6 +36,19 @@ yarn-error.log*
 # vercel
 .vercel
 
+# content synced from Airtable at build/dev time -- see scripts/sync-content.mjs
+/content/generated/
+/public/audio/*/
+!/public/audio/.gitkeep
+
+# next-pwa generated service worker
+/public/sw.js
+/public/swe-worker*.js
+/public/workbox-*.js
+/public/worker-*.js
+/public/sw.js.map
+/public/workbox-*.js.map
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
