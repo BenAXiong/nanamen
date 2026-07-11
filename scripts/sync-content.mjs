@@ -136,15 +136,20 @@ async function main() {
 
   for (const record of records) {
     const f = record.fields;
-    if (!f.Lesson || !f.Section || !f.Amis) {
-      console.warn(`  warning: skipping record ${record.id}, missing Lesson/Section/Amis`);
+    if (!f.Lesson || !f.Amis) {
+      console.warn(`  warning: skipping record ${record.id}, missing Lesson/Amis`);
       continue;
     }
+    // No Section yet is expected -- content waiting to be manually sorted into
+    // a section doesn't show up in the app until it is, but it's not a mistake.
+    if (!f.Section) continue;
 
     const lessonSlug = slugify(f.Lesson);
     const sectionSlug = slugify(f.Section);
     const { role: pairRole, number: pairNumber } = parsePairTag(f["Pair Tag"]);
-    if (f["Pair Tag"] && pairRole === null) {
+    // Bare "Q"/"A" (no number) is an expected in-progress state -- a rough seed
+    // tag before manual numbering/pairing, not a mistake worth warning about.
+    if (f["Pair Tag"] && pairRole === null && !/^[QA]$/i.test(f["Pair Tag"].trim())) {
       console.warn(`  warning: unrecognized Pair Tag "${f["Pair Tag"]}" on record ${record.id} (expected Qn/An), treating as untagged`);
     }
 

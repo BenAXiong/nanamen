@@ -1,0 +1,14 @@
+{
+  "lesson": "Rekad 1",
+  "classDate": "",
+  "_classDateFormat": "YY/MM/DD, e.g. 26/05/27 -- fill this in, then ask Claude to apply it to Airtable (renames the Lesson field on all 56 rows to \"Rekad 1 - <classDate>\")",
+  "sections": [
+    { "name": "Sakacecay", "title": "入門詞彙・基本問候", "seedOrder": 1, "seedAmis": "O cima ko ngangan iso?" },
+    { "name": "Sakatosa", "title": "日常對話・家庭稱謂", "seedOrder": 2, "seedAmis": "Si ___ ko ngangan ako." },
+    { "name": "Sakatolo", "title": "動詞變化・否定句", "seedOrder": 3, "seedAmis": "O cima ko ngangan ako?" },
+    { "name": "Sakasepat", "title": "進階句型・複合詞", "seedOrder": 4, "seedAmis": "Si ___ ko ngangan iso." },
+    { "name": "Sakalima", "title": "深度文化・敬語", "seedOrder": 5, "seedAmis": "Si Kacaw kako haw?" },
+    { "name": "Sakaenem", "title": "文化場景・即興表達", "seedOrder": 6, "seedAmis": "Cowa, cowa si Kacaw kiso, si Panay kiso." }
+  ],
+  "_sectionsNote": "seedOrder/seedAmis show which sentence (by its Order number in lesson-1-airtable-import.csv) currently seeds that section in Airtable. Change seedOrder to a different Order number if you'd rather a different sentence seed that section, then ask Claude to apply it."
+}

@@ -44,6 +44,7 @@ yarn-error.log*
 # local staging area for content conversion/import files
 /scratch/*
 !/scratch/README.md
+!/scratch/*-manual-config.json
 
 # next-pwa generated service worker
 /public/sw.js
