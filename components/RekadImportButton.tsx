@@ -22,13 +22,13 @@ export function RekadImportButton() {
           type="button"
           onClick={onClick}
           disabled={isPending}
-          className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition active:scale-95 hover:bg-amber-600 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition active:scale-95 hover:bg-amber-600 disabled:opacity-50"
         >
           {isPending ? "Checking…" : "Check & import next lesson"}
         </button>
         <Link
           href="/edit"
-          className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+          className="flex-1 rounded-lg border border-stone-300 px-4 py-2 text-center text-sm font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
         >
           Edit
         </Link>
