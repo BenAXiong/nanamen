@@ -30,6 +30,7 @@ export default async function RekadImportPage() {
             sentences={sentences}
             initialConfig={initialConfig}
             onSuccessMode="redirect"
+            redirectTo="/edit"
           />
         </div>
       ) : null}
