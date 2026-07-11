@@ -2,16 +2,29 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { runRekadImport } from "@/app/import/actions";
 import type { ImportResult } from "@/lib/rekadImport.server";
 
+type NonImportedResult = Exclude<ImportResult, { status: "imported" }>;
+
 export function RekadImportButton() {
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const router = useRouter();
+  const [result, setResult] = useState<NonImportedResult | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const onClick = () => {
     startTransition(async () => {
-      setResult(await runRekadImport());
+      const importResult = await runRekadImport();
+      if (importResult.status === "imported") {
+        // Don't hold a stale confirmation message -- refetch so the
+        // section-assignment panel (which needsSectioning now makes true for
+        // this freshly-imported, all-blank lesson) shows up in its place.
+        setResult(null);
+        router.refresh();
+      } else {
+        setResult(importResult);
+      }
     });
   };
 
@@ -39,7 +52,10 @@ export function RekadImportButton() {
   );
 }
 
-function ResultPanel({ result }: { result: ImportResult }) {
+// Only ever receives "error" or "unavailable" -- a successful import
+// refetches instead of setting result (see onClick above), so its panel
+// shows the section-assignment form in place of a confirmation message.
+function ResultPanel({ result }: { result: NonImportedResult }) {
   if (result.status === "error") {
     return (
       <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
@@ -48,26 +64,9 @@ function ResultPanel({ result }: { result: ImportResult }) {
     );
   }
 
-  if (result.status === "unavailable") {
-    return (
-      <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
-        Rekad {result.lessonNumber} isn&apos;t available on SashaWaves yet.
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-      <p className="font-medium">Imported &ldquo;{result.lessonName}&rdquo;</p>
-      <p>{result.count} sentences written.</p>
-      <p>
-        {result.sectioned} placed into a section, {result.unsectioned} left blank for manual sorting.
-      </p>
-      <p className="mt-1 text-xs opacity-80">
-        {result.usedConfig
-          ? `Used scratch/lesson-${result.lessonNumber}-manual-config.json.`
-          : `No scratch/lesson-${result.lessonNumber}-manual-config.json found -- imported with blank sections.`}
-      </p>
+    <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+      Rekad {result.lessonNumber} isn&apos;t available on SashaWaves yet.
     </div>
   );
 }
