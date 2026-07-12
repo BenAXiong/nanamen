@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Eye, EyeOff } from "lucide-react";
 import { AudioButton } from "@/components/AudioButton";
 import { useAudioPlayer } from "@/lib/useAudioPlayer";
@@ -53,6 +53,33 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
   }
 
   const goTo = (next: number) => setIndex(next);
+  const goPrev = () => goTo(Math.max(0, index - 1));
+  const goNext = () => (index === items.length - 1 ? onFinish() : goTo(Math.min(items.length - 1, index + 1)));
+
+  // Swipe left/right as an alternative to the Prev/Next buttons. Tracked on
+  // touchstart/touchend rather than a gesture library -- one threshold
+  // check, no need for anything heavier. A swipe must be clearly more
+  // horizontal than vertical so it doesn't fire while scrolling the card
+  // (its content can overflow-y-auto if a sentence is long).
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const SWIPE_THRESHOLD = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) goNext();
+    else goPrev();
+  };
 
   return (
     <div className="flex flex-1 flex-col">
@@ -75,7 +102,7 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
         </button>
       </div>
 
-      <div className="flex flex-1 items-center justify-center">
+      <div className="flex flex-1 items-center justify-center" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="flex h-[38vh] w-full flex-col items-center justify-center gap-6 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
           <p
             onClick={() => setAmisRevealed((r) => !r)}
@@ -116,14 +143,14 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
         <button
           type="button"
           disabled={index === 0}
-          onClick={() => goTo(Math.max(0, index - 1))}
+          onClick={goPrev}
           className="flex-1 rounded-lg border border-stone-300 py-3 font-medium text-stone-700 transition active:scale-95 disabled:opacity-30 dark:border-stone-700 dark:text-stone-300"
         >
           Prev
         </button>
         <button
           type="button"
-          onClick={() => (index === items.length - 1 ? onFinish() : goTo(Math.min(items.length - 1, index + 1)))}
+          onClick={goNext}
           className="flex-1 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
         >
           {index === items.length - 1 ? "Home" : "Next"}
