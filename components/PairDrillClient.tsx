@@ -9,7 +9,7 @@ import type { Pair } from "@/lib/content";
 
 const GAP_FLOOR_SECONDS = 2;
 
-type Phase = "question" | "gap" | "answer";
+type Phase = "gap" | "answer";
 
 // Generic Q/A drill: used both for a single Section's Fluency mode and for
 // the cross-section Practice-weak-items drill -- the caller resolves and
@@ -29,34 +29,43 @@ export function PairDrillClient({
   const { gradeGotIt, gradeMissed } = useNanamenState();
 
   const [index, setIndex] = useState(0);
-  const [phase, setPhase] = useState<Phase>("question");
+  const [phase, setPhase] = useState<Phase>("gap");
   const [grades, setGrades] = useState<Record<string, "got" | "missed">>({});
   const gapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (gapTimer.current) clearTimeout(gapTimer.current);
-    };
-  }, []);
-
   const pair: Pair | undefined = pairs[index];
 
-  // Question audio autoplays as soon as a pair is on screen (fresh session
-  // start, or after tapping "Next").
-  useEffect(() => {
-    if (pair?.question.audioUrl) play(pair.question.audioUrl);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pair?.id]);
+  // Each of the four texts (Q/A x amis/zh) reveals independently on its own
+  // tap -- reset together whenever a new pair comes on screen.
+  const [qAmisRevealed, setQAmisRevealed] = useState(false);
+  const [qZhRevealed, setQZhRevealed] = useState(false);
+  const [aAmisRevealed, setAAmisRevealed] = useState(false);
+  const [aZhRevealed, setAZhRevealed] = useState(false);
+  const [revealKey, setRevealKey] = useState(pair?.id);
+  if (pair?.id !== revealKey) {
+    setRevealKey(pair?.id);
+    setQAmisRevealed(false);
+    setQZhRevealed(false);
+    setAAmisRevealed(false);
+    setAZhRevealed(false);
+  }
 
-  const startGap = () => {
+  // Question audio autoplays and the answer-reveal timer starts
+  // automatically as soon as a pair is on screen -- no manual "reveal" step.
+  useEffect(() => {
     if (!pair) return;
+    if (pair.question.audioUrl) play(pair.question.audioUrl);
     setPhase("gap");
     const seconds = Math.max(pair.answer.durationSeconds ?? 0, GAP_FLOOR_SECONDS);
     gapTimer.current = setTimeout(() => {
       setPhase("answer");
       if (pair.answer.audioUrl) play(pair.answer.audioUrl);
     }, seconds * 1000);
-  };
+    return () => {
+      if (gapTimer.current) clearTimeout(gapTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pair?.id]);
 
   const grade = (value: "got" | "missed") => {
     if (!pair) return;
@@ -65,10 +74,7 @@ export function PairDrillClient({
     else gradeMissed(pair.id);
   };
 
-  const advance = () => {
-    setPhase("question");
-    setIndex((i) => i + 1);
-  };
+  const advance = () => setIndex((i) => i + 1);
 
   if (pairs.length === 0) {
     return <p className="py-8 text-center text-stone-500 dark:text-stone-400">{emptyMessage}</p>;
@@ -95,7 +101,7 @@ export function PairDrillClient({
           onClick={() => {
             setGrades({});
             setIndex(0);
-            setPhase("question");
+            setPhase("gap");
           }}
           className="rounded-lg bg-accent px-6 py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
         >
@@ -106,7 +112,6 @@ export function PairDrillClient({
   }
 
   const revealed = phase === "answer";
-  const blurUntilRevealed = `transition-all ${revealed ? "" : "select-none blur-sm"}`;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -121,35 +126,53 @@ export function PairDrillClient({
         ) : null}
       </div>
 
-      <div className="flex h-[38vh] flex-col items-center justify-center gap-4 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
-        <div>
-          <p className="text-2xl font-medium text-stone-900 dark:text-stone-50">{pair.question.amis}</p>
-          <p className={`mt-1 text-stone-600 dark:text-stone-300 ${blurUntilRevealed}`}>{pair.question.zh}</p>
+      <div className="flex flex-1 items-center justify-center">
+        <div className="flex h-[38vh] w-full flex-col items-center justify-center gap-4 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
+          <div>
+            <p
+              onClick={() => setQAmisRevealed((r) => !r)}
+              className={`cursor-pointer text-2xl font-medium text-stone-900 transition-all dark:text-stone-50 ${
+                qAmisRevealed ? "" : "select-none blur-sm"
+              }`}
+            >
+              {pair.question.amis}
+            </p>
+            <p
+              onClick={() => setQZhRevealed((r) => !r)}
+              className={`mt-1 cursor-pointer text-stone-600 transition-all dark:text-stone-300 ${
+                qZhRevealed ? "" : "select-none blur-sm"
+              }`}
+            >
+              {pair.question.zh}
+            </p>
+          </div>
+          <AudioButton url={pair.question.audioUrl} playing={isPlaying} onPlay={() => play(pair.question.audioUrl!)} />
+
+          {phase === "gap" ? <p className="animate-pulse text-sm text-stone-400 dark:text-stone-600">Your turn…</p> : null}
+
+          <div className="w-full border-t border-stone-200 dark:border-stone-800" />
+          <div>
+            <p
+              onClick={() => revealed && setAAmisRevealed((r) => !r)}
+              className={`text-2xl font-medium text-stone-900 transition-all dark:text-stone-50 ${
+                revealed ? "cursor-pointer" : "cursor-default"
+              } ${aAmisRevealed ? "" : "select-none blur-sm"}`}
+            >
+              {pair.answer.amis}
+            </p>
+            <p
+              onClick={() => revealed && setAZhRevealed((r) => !r)}
+              className={`mt-1 text-stone-600 transition-all dark:text-stone-300 ${
+                revealed ? "cursor-pointer" : "cursor-default"
+              } ${aZhRevealed ? "" : "select-none blur-sm"}`}
+            >
+              {pair.answer.zh}
+            </p>
+          </div>
+          {revealed ? (
+            <AudioButton url={pair.answer.audioUrl} playing={isPlaying} onPlay={() => play(pair.answer.audioUrl!)} />
+          ) : null}
         </div>
-        <AudioButton url={pair.question.audioUrl} playing={isPlaying} onPlay={() => play(pair.question.audioUrl!)} />
-
-        {phase === "question" ? (
-          <button
-            type="button"
-            onClick={startGap}
-            className="rounded-lg bg-amber-500 px-6 py-3 font-medium text-white transition active:scale-95 hover:bg-amber-600 dark:bg-purple-500 dark:hover:bg-purple-600"
-          >
-            Reveal answer
-          </button>
-        ) : null}
-
-        {phase === "gap" ? (
-          <p className="animate-pulse text-sm text-stone-400 dark:text-stone-600">Your turn…</p>
-        ) : null}
-
-        <div className="w-full border-t border-stone-200 dark:border-stone-800" />
-        <div>
-          <p className={`text-2xl font-medium text-stone-900 dark:text-stone-50 ${blurUntilRevealed}`}>{pair.answer.amis}</p>
-          <p className={`mt-1 text-stone-600 dark:text-stone-300 ${blurUntilRevealed}`}>{pair.answer.zh}</p>
-        </div>
-        {revealed ? (
-          <AudioButton url={pair.answer.audioUrl} playing={isPlaying} onPlay={() => play(pair.answer.audioUrl!)} />
-        ) : null}
       </div>
 
       {revealed ? (
