@@ -1,11 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Circle } from "lucide-react";
 import type { Lesson } from "@/lib/content";
 import { SentenceListClient } from "@/components/SentenceListClient";
-import { getSectionStatus, sectionKey, useNanamenState } from "@/lib/state";
+import { getSectionStatus, sectionKey, useNanamenState, type SectionStatus } from "@/lib/state";
 import type { useDeckSelection } from "@/lib/useDeckSelection";
+
+const NEUTRAL = "text-stone-400 dark:text-stone-500";
+
+// Grey tick-in-circle by default; the circle fills green once the section
+// has been reviewed, and the tick itself follows once it's been tested --
+// two independently-lit parts of one badge, not a single icon swap.
+function CompletionBadge({ status }: { status: SectionStatus | "none" }) {
+  return (
+    <span className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+      <Circle className={`absolute inset-0 h-3.5 w-3.5 ${status === "none" ? NEUTRAL : "text-green-500"}`} />
+      <Check className={`h-2 w-2 ${status === "tested" ? "text-green-500" : NEUTRAL}`} />
+    </span>
+  );
+}
 
 export type DeckSelectionApi = ReturnType<typeof useDeckSelection>;
 export type PickerTone = "accent" | "amber";
@@ -116,11 +130,7 @@ export function DeckPicker({
                     >
                       {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
                       <span className="truncate">{section.title}</span>
-                      {status === "tested" ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 fill-green-500 text-white dark:text-stone-900" />
-                      ) : status === "complete" ? (
-                        <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
-                      ) : null}
+                      <CompletionBadge status={status} />
                     </button>
                     <Toggle
                       on={deck.isSectionSelected(openLesson.slug, section.slug)}
