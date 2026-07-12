@@ -218,10 +218,10 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
           <button
             type="button"
             onClick={() => setStrengthenMode((m) => !m)}
-            className={`flex-1 rounded-lg px-3 py-3 text-center text-sm font-medium transition active:scale-95 ${
+            className={`flex-1 rounded-lg px-3 py-3 text-center text-sm font-medium text-white transition active:scale-95 ${
               strengthenMode
-                ? "bg-purple-500 text-white hover:bg-purple-600"
-                : "border border-purple-300 text-purple-700 dark:border-purple-700 dark:text-purple-200"
+                ? "bg-purple-700 hover:bg-purple-800"
+                : "bg-purple-500 hover:bg-purple-600"
             }`}
           >
             Strengthen ({activeWeakPairs.length})

@@ -35,19 +35,16 @@ export function PairDrillClient({
 
   const pair: Pair | undefined = pairs[index];
 
-  // Each of the four texts (Q/A x amis/zh) reveals independently on its own
-  // tap -- reset together whenever a new pair comes on screen.
+  // The question's amis/zh reveal independently on their own tap, any time
+  // -- unrelated to the timed answer reveal below. Reset whenever a new
+  // pair comes on screen.
   const [qAmisRevealed, setQAmisRevealed] = useState(false);
   const [qZhRevealed, setQZhRevealed] = useState(false);
-  const [aAmisRevealed, setAAmisRevealed] = useState(false);
-  const [aZhRevealed, setAZhRevealed] = useState(false);
   const [revealKey, setRevealKey] = useState(pair?.id);
   if (pair?.id !== revealKey) {
     setRevealKey(pair?.id);
     setQAmisRevealed(false);
     setQZhRevealed(false);
-    setAAmisRevealed(false);
-    setAZhRevealed(false);
   }
 
   // Question audio autoplays and the answer-reveal timer starts
@@ -112,6 +109,7 @@ export function PairDrillClient({
   }
 
   const revealed = phase === "answer";
+  const graded = !!grades[pair.id];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -127,7 +125,7 @@ export function PairDrillClient({
       </div>
 
       <div className="flex flex-1 items-center justify-center">
-        <div className="flex h-[38vh] w-full flex-col items-center justify-center gap-4 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
+        <div className="flex min-h-[38vh] w-full flex-col items-center justify-center gap-4 rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
           <div>
             <p
               onClick={() => setQAmisRevealed((r) => !r)}
@@ -148,30 +146,33 @@ export function PairDrillClient({
           </div>
           <AudioButton url={pair.question.audioUrl} playing={isPlaying} onPlay={() => play(pair.question.audioUrl!)} />
 
-          {phase === "gap" ? <p className="animate-pulse text-sm text-stone-400 dark:text-stone-600">Your turn…</p> : null}
-
           <div className="w-full border-t border-stone-200 dark:border-stone-800" />
-          <div>
-            <p
-              onClick={() => revealed && setAAmisRevealed((r) => !r)}
-              className={`text-2xl font-medium text-stone-900 transition-all dark:text-stone-50 ${
-                revealed ? "cursor-pointer" : "cursor-default"
-              } ${aAmisRevealed ? "" : "select-none blur-sm"}`}
-            >
-              {pair.answer.amis}
-            </p>
-            <p
-              onClick={() => revealed && setAZhRevealed((r) => !r)}
-              className={`mt-1 text-stone-600 transition-all dark:text-stone-300 ${
-                revealed ? "cursor-pointer" : "cursor-default"
-              } ${aZhRevealed ? "" : "select-none blur-sm"}`}
-            >
-              {pair.answer.zh}
-            </p>
+
+          {/* Answer: always mounted (blurred text + invisible audio button)
+              so its space is reserved and nothing jiggles when it reveals.
+              During the gap, an overlay covers it instead of the plain
+              blurred text peeking through. */}
+          <div className="relative flex w-full flex-col items-center gap-4">
+            <div>
+              <p className={`text-2xl font-medium text-stone-900 transition-all dark:text-stone-50 ${revealed ? "" : "select-none blur-sm"}`}>
+                {pair.answer.amis}
+              </p>
+              <p className={`mt-1 text-stone-600 transition-all dark:text-stone-300 ${revealed ? "" : "select-none blur-sm"}`}>
+                {pair.answer.zh}
+              </p>
+            </div>
+            <div className={revealed ? "" : "invisible"}>
+              <AudioButton url={pair.answer.audioUrl} playing={isPlaying} onPlay={() => play(pair.answer.audioUrl!)} />
+            </div>
+
+            {phase === "gap" ? (
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/85 backdrop-blur-sm dark:bg-stone-900/85">
+                <span className="animate-pulse rounded-full bg-stone-900 px-4 py-1.5 text-sm font-medium text-white dark:bg-stone-100 dark:text-stone-900">
+                  Answer…
+                </span>
+              </div>
+            ) : null}
           </div>
-          {revealed ? (
-            <AudioButton url={pair.answer.audioUrl} playing={isPlaying} onPlay={() => play(pair.answer.audioUrl!)} />
-          ) : null}
         </div>
       </div>
 
@@ -180,10 +181,10 @@ export function PairDrillClient({
           <button
             type="button"
             onClick={() => grade("missed")}
-            className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-4 py-3 font-medium transition active:scale-95 ${
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-4 py-3 font-medium text-red-600 transition active:scale-95 dark:text-red-400 ${
               grades[pair.id] === "missed"
-                ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40"
-                : "border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
+                ? "border-red-500 bg-red-50 dark:bg-red-950/40"
+                : "border-red-200 dark:border-red-900"
             }`}
           >
             <X className="h-4 w-4" /> Missed
@@ -191,10 +192,10 @@ export function PairDrillClient({
           <button
             type="button"
             onClick={() => grade("got")}
-            className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-4 py-3 font-medium transition active:scale-95 ${
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-4 py-3 font-medium text-emerald-600 transition active:scale-95 dark:text-emerald-400 ${
               grades[pair.id] === "got"
-                ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40"
-                : "border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
+                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
+                : "border-emerald-200 dark:border-emerald-900"
             }`}
           >
             <Check className="h-4 w-4" /> Got it
@@ -205,8 +206,9 @@ export function PairDrillClient({
       {revealed ? (
         <button
           type="button"
+          disabled={!graded}
           onClick={advance}
-          className="mt-4 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
+          className="mt-4 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 disabled:opacity-30 dark:bg-stone-100 dark:text-stone-900"
         >
           {index === pairs.length - 1 ? "Finish" : "Next"}
         </button>
