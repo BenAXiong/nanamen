@@ -36,14 +36,16 @@ function collectSentences(lessons: Lesson[], selection: Selection): ExposureItem
   return items;
 }
 
-function collectPairs(lessons: Lesson[], selection: Selection): Pair[] {
+function collectPairs(lessons: Lesson[], selection: Selection, filter?: (pair: Pair) => boolean): Pair[] {
   const pairs: Pair[] = [];
   for (const lesson of lessons) {
     const set = selection[lesson.slug];
     if (!set || set.size === 0) continue;
     for (const section of lesson.sections) {
       if (!set.has(section.slug)) continue;
-      pairs.push(...getPairs(lesson, section));
+      for (const pair of getPairs(lesson, section)) {
+        if (!filter || filter(pair)) pairs.push(pair);
+      }
     }
   }
   return pairs;
@@ -115,8 +117,11 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
     [activeLessons, deck.selection, state],
   );
   const testPairs = useMemo(
-    () => collectPairs(activeLessons, deck.selection).filter((p) => !isPairSuspended(state, p)),
-    [activeLessons, deck.selection, state],
+    () =>
+      collectPairs(activeLessons, deck.selection, strengthenMode ? (p) => weakSet.has(p.id) : undefined).filter(
+        (p) => !isPairSuspended(state, p),
+      ),
+    [activeLessons, deck.selection, state, strengthenMode, weakSet],
   );
 
   const startReview = () => {
