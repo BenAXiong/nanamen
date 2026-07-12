@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Eye, EyeOff } from "lucide-react";
+import { Check, Eye, EyeOff, Pause } from "lucide-react";
 import { AudioButton } from "@/components/AudioButton";
 import { useAudioPlayer } from "@/lib/useAudioPlayer";
 import { sectionKey, useNanamenState } from "@/lib/state";
@@ -15,7 +15,7 @@ export type ExposureItem = { lessonSlug: string; sectionSlug: string; sentence: 
 // as its own screen (not alongside the picker it was launched from).
 export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onFinish: () => void }) {
   const { play, isPlaying } = useAudioPlayer();
-  const { markSectionsComplete } = useNanamenState();
+  const { markSectionsComplete, toggleSuspendSentence } = useNanamenState();
 
   const [index, setIndex] = useState(0);
   const current = items[index];
@@ -56,11 +56,21 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
   const goPrev = () => goTo(Math.max(0, index - 1));
   const goNext = () => (index === items.length - 1 ? onFinish() : goTo(Math.min(items.length - 1, index + 1)));
 
-  // Swipe left/right as an alternative to the Prev/Next buttons. Tracked on
-  // touchstart/touchend rather than a gesture library -- one threshold
-  // check, no need for anything heavier. A swipe must be clearly more
-  // horizontal than vertical so it doesn't fire while scrolling the card
-  // (its content can overflow-y-auto if a sentence is long).
+  // Suspending the current sentence doesn't retroactively change this
+  // session's fixed item list (it just won't be picked up by the *next*
+  // session) -- but staying on a card you just decided to skip would be
+  // odd, so this also advances immediately, same as a manual Next tap.
+  const suspendAndAdvance = () => {
+    toggleSuspendSentence(sentence.id);
+    goNext();
+  };
+
+  // Swipe left/right as an alternative to the Prev/Next buttons, swipe down
+  // as an alternative to the suspend button. Tracked on touchstart/touchend
+  // rather than a gesture library -- a couple of threshold checks, no need
+  // for anything heavier. Each direction must clearly dominate the other
+  // axis so a horizontal swipe doesn't fire while scrolling the card (its
+  // content can overflow-y-auto if a sentence is long), and vice versa.
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const SWIPE_THRESHOLD = 50;
 
@@ -76,9 +86,14 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
     const t = e.changedTouches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
-    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0) goNext();
-    else goPrev();
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+      if (dx < 0) goNext();
+      else goPrev();
+    } else {
+      if (dy < SWIPE_THRESHOLD) return;
+      suspendAndAdvance();
+    }
   };
 
   return (
@@ -87,19 +102,29 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
         <span className="text-sm text-stone-500 dark:text-stone-400">
           {index + 1} / {items.length}
         </span>
-        <button
-          type="button"
-          onClick={() => setAmisAlwaysVisible((v) => !v)}
-          aria-pressed={amisAlwaysVisible}
-          aria-label={amisAlwaysVisible ? "Hide Amis for this session" : "Show Amis for this session"}
-          className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
-            amisAlwaysVisible
-              ? "bg-accent text-white dark:bg-stone-100 dark:text-stone-900"
-              : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
-          }`}
-        >
-          {amisAlwaysVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={suspendAndAdvance}
+            aria-label="Suspend this sentence"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+          >
+            <Pause className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setAmisAlwaysVisible((v) => !v)}
+            aria-pressed={amisAlwaysVisible}
+            aria-label={amisAlwaysVisible ? "Hide Amis for this session" : "Show Amis for this session"}
+            className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
+              amisAlwaysVisible
+                ? "bg-accent text-white dark:bg-stone-100 dark:text-stone-900"
+                : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+            }`}
+          >
+            {amisAlwaysVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 items-center justify-center" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
