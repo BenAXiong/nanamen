@@ -82,8 +82,8 @@ export function DeckPicker({
                     : "border-accent bg-accent/10 text-accent"
                   : enabled
                     ? tone === "amber"
-                      ? "border-amber-500 text-amber-600 dark:border-purple-500 dark:text-purple-300"
-                      : "border-accent text-accent"
+                      ? "border-stone-200 text-amber-600 dark:border-stone-700 dark:text-purple-300"
+                      : "border-stone-200 text-accent dark:border-stone-700"
                     : "border-stone-200 text-stone-400 dark:border-stone-700 dark:text-stone-500"
               }`}
             >

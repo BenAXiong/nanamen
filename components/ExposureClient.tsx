@@ -30,10 +30,10 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
     setZhRevealed(false);
   }
 
-  // Session-wide override: unblurs Zh on every card regardless of its own
+  // Session-wide override: unblurs Amis on every card regardless of its own
   // tap state. Local to this component instance, so it's back to blurred
   // next time a Review session starts (ExposureClient remounts fresh).
-  const [zhAlwaysVisible, setZhAlwaysVisible] = useState(false);
+  const [amisAlwaysVisible, setAmisAlwaysVisible] = useState(false);
 
   useEffect(() => {
     if (sentence?.audioUrl) play(sentence.audioUrl);
@@ -54,16 +54,16 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
         </span>
         <button
           type="button"
-          onClick={() => setZhAlwaysVisible((v) => !v)}
-          aria-pressed={zhAlwaysVisible}
-          aria-label={zhAlwaysVisible ? "Hide Zh for this session" : "Show Zh for this session"}
+          onClick={() => setAmisAlwaysVisible((v) => !v)}
+          aria-pressed={amisAlwaysVisible}
+          aria-label={amisAlwaysVisible ? "Hide Amis for this session" : "Show Amis for this session"}
           className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
-            zhAlwaysVisible
+            amisAlwaysVisible
               ? "bg-accent text-white dark:bg-stone-100 dark:text-stone-900"
               : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
           }`}
         >
-          {zhAlwaysVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          {amisAlwaysVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </button>
       </div>
 
@@ -72,7 +72,7 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
           <p
             onClick={() => setAmisRevealed((r) => !r)}
             className={`cursor-pointer text-2xl font-medium text-stone-900 transition-all dark:text-stone-50 ${
-              amisRevealed ? "" : "select-none blur-sm"
+              amisRevealed || amisAlwaysVisible ? "" : "select-none blur-sm"
             }`}
           >
             {sentence.amis}
@@ -80,7 +80,7 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
           <p
             onClick={() => setZhRevealed((r) => !r)}
             className={`cursor-pointer text-lg text-stone-600 transition-all dark:text-stone-300 ${
-              zhRevealed || zhAlwaysVisible ? "" : "select-none blur-sm"
+              zhRevealed ? "" : "select-none blur-sm"
             }`}
           >
             {sentence.zh}
