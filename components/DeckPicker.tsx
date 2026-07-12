@@ -21,6 +21,16 @@ function CompletionBadge({ status }: { status: SectionStatus | "none" }) {
   );
 }
 
+// A lesson's own badge auto-activates from its sections' badges: green
+// circle once every section has at least been reviewed, green tick once
+// every section has been tested -- same two-part principle, one level up.
+function aggregateStatus(statuses: (SectionStatus | "none")[]): SectionStatus | "none" {
+  if (statuses.length === 0) return "none";
+  if (statuses.every((s) => s === "tested")) return "tested";
+  if (statuses.every((s) => s !== "none")) return "complete";
+  return "none";
+}
+
 export type DeckSelectionApi = ReturnType<typeof useDeckSelection>;
 export type PickerTone = "accent" | "amber";
 
@@ -112,7 +122,14 @@ export function DeckPicker({
       {openLesson ? (
         <div className="mt-2 flex flex-1 flex-col">
           <div className="flex items-center justify-between py-2">
-            <span className="font-semibold text-stone-900 dark:text-stone-50">{openLesson.title}</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <CompletionBadge
+                status={aggregateStatus(
+                  openLesson.sections.map((s) => getSectionStatus(state, sectionKey(openLesson.slug, s.slug))),
+                )}
+              />
+              <span className="truncate font-semibold text-stone-900 dark:text-stone-50">{openLesson.title}</span>
+            </span>
             <Toggle on={deck.lessonState(openLesson.slug) !== "none"} onToggle={() => deck.toggleLesson(openLesson.slug)} tone={tone} />
           </div>
 
@@ -129,8 +146,8 @@ export function DeckPicker({
                       className="flex flex-1 items-center gap-1.5 text-left text-sm text-stone-700 dark:text-stone-300"
                     >
                       {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                      <span className="truncate">{section.title}</span>
                       <CompletionBadge status={status} />
+                      <span className="truncate">{section.title}</span>
                     </button>
                     <Toggle
                       on={deck.isSectionSelected(openLesson.slug, section.slug)}
