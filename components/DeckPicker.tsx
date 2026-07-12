@@ -9,14 +9,14 @@ import type { useDeckSelection } from "@/lib/useDeckSelection";
 
 const NEUTRAL = "text-stone-400 dark:text-stone-500";
 
-// Grey tick-in-circle by default; the circle fills green once the section
-// has been reviewed, and the tick itself follows once it's been tested --
-// two independently-lit parts of one badge, not a single icon swap.
+// Plain (grey) circle by default; it fills green once the section has been
+// reviewed. The tick itself only appears once it's been tested -- not a
+// grey placeholder beforehand.
 function CompletionBadge({ status }: { status: SectionStatus | "none" }) {
   return (
     <span className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
       <Circle className={`absolute inset-0 h-3.5 w-3.5 ${status === "none" ? NEUTRAL : "text-green-500"}`} />
-      <Check strokeWidth={3.5} className={`h-2 w-2 ${status === "tested" ? "text-green-500" : NEUTRAL}`} />
+      {status === "tested" ? <Check strokeWidth={3.5} className="h-2 w-2 text-green-500" /> : null}
     </span>
   );
 }
