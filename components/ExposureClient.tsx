@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { AudioButton } from "@/components/AudioButton";
 import { useAudioPlayer } from "@/lib/useAudioPlayer";
 import type { Sentence } from "@/lib/content";
@@ -29,6 +30,11 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
     setZhRevealed(false);
   }
 
+  // Session-wide override: unblurs Zh on every card regardless of its own
+  // tap state. Local to this component instance, so it's back to blurred
+  // next time a Review session starts (ExposureClient remounts fresh).
+  const [zhAlwaysVisible, setZhAlwaysVisible] = useState(false);
+
   useEffect(() => {
     if (sentence?.audioUrl) play(sentence.audioUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,6 +52,19 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
         <span className="text-sm text-stone-500 dark:text-stone-400">
           {index + 1} / {items.length}
         </span>
+        <button
+          type="button"
+          onClick={() => setZhAlwaysVisible((v) => !v)}
+          aria-pressed={zhAlwaysVisible}
+          aria-label={zhAlwaysVisible ? "Hide Zh for this session" : "Show Zh for this session"}
+          className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
+            zhAlwaysVisible
+              ? "bg-accent text-white dark:bg-stone-100 dark:text-stone-900"
+              : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+          }`}
+        >
+          {zhAlwaysVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+        </button>
       </div>
 
       <div className="flex flex-1 items-center justify-center">
@@ -61,7 +80,7 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
           <p
             onClick={() => setZhRevealed((r) => !r)}
             className={`cursor-pointer text-lg text-stone-600 transition-all dark:text-stone-300 ${
-              zhRevealed ? "" : "select-none blur-sm"
+              zhRevealed || zhAlwaysVisible ? "" : "select-none blur-sm"
             }`}
           >
             {sentence.zh}
