@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f59e0b",
+  themeColor: "#0c0a09", // matches dark mode's stone-950 body background
 };
 
 export default function RootLayout({
