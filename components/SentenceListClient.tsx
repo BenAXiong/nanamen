@@ -39,7 +39,7 @@ export function SentenceListClient({ lesson, section }: { lesson: Lesson; sectio
                 aria-label={weak ? "Unmark pair as weak" : "Mark pair as weak"}
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition ${
                   weak
-                    ? "text-amber-600 hover:bg-amber-50 dark:text-purple-400 dark:hover:bg-purple-950/40"
+                    ? "text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40"
                     : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
                 }`}
               >
