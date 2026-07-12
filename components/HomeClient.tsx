@@ -157,10 +157,7 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
       <header className="flex items-center justify-between py-6">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">Nanamen</h1>
-          <div className="text-xs leading-tight text-stone-500 dark:text-stone-400">
-            <div>Amis</div>
-            <div>Malan</div>
-          </div>
+          <p className="text-sm text-stone-500 dark:text-stone-400">Amis · Malan</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -196,22 +193,6 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
         </div>
       </header>
 
-      {activeWeakPairs.length > 0 ? (
-        <div className="mb-3">
-          <button
-            type="button"
-            onClick={() => setStrengthenMode((m) => !m)}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-              strengthenMode
-                ? "bg-amber-500 text-white dark:bg-purple-500"
-                : "border border-amber-300 text-amber-800 dark:border-purple-700 dark:text-purple-200"
-            }`}
-          >
-            Strengthen ({activeWeakPairs.length})
-          </button>
-        </div>
-      ) : null}
-
       <DeckPicker key={strengthenMode ? "strengthen" : "normal"} lessons={activeLessons} deck={deck} tone={tone} />
 
       <div className="mt-4 flex gap-3">
@@ -233,6 +214,19 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
         >
           Test ({testPairs.length})
         </button>
+        {activeWeakPairs.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setStrengthenMode((m) => !m)}
+            className={`flex-1 rounded-lg px-3 py-3 text-center text-sm font-medium transition active:scale-95 ${
+              strengthenMode
+                ? "bg-purple-500 text-white hover:bg-purple-600"
+                : "border border-purple-300 text-purple-700 dark:border-purple-700 dark:text-purple-200"
+            }`}
+          >
+            Strengthen ({activeWeakPairs.length})
+          </button>
+        ) : null}
       </div>
     </div>
   );
