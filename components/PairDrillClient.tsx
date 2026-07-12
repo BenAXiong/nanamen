@@ -8,6 +8,7 @@ import { useNanamenState } from "@/lib/state";
 import type { Pair } from "@/lib/content";
 
 const GAP_FLOOR_SECONDS = 2;
+const GAP_EXTRA_SECONDS = 1;
 
 type Phase = "question" | "gap" | "answer";
 
@@ -59,7 +60,7 @@ export function PairDrillClient({
 
     const startGap = () => {
       setPhase("gap");
-      const seconds = Math.max(pair.answer.durationSeconds ?? 0, GAP_FLOOR_SECONDS);
+      const seconds = Math.max(pair.answer.durationSeconds ?? 0, GAP_FLOOR_SECONDS) + GAP_EXTRA_SECONDS;
       gapTimer.current = setTimeout(() => setPhase("answer"), seconds * 1000);
     };
 
