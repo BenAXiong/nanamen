@@ -88,6 +88,17 @@ function trailingNumber(label) {
   return 0;
 }
 
+// "Rekad 3 - 26/07/15" -> 3, not 15 -- trailingNumber() would match the last
+// digits in the string, which for a dated lesson name is part of the class
+// date, not the lesson number. Lessons are always "Rekad N" or "Lesson N",
+// optionally followed by " - YY/MM/DD", so the number right after that word
+// is authoritative.
+function lessonNumber(label) {
+  const match = label.match(/^(?:Rekad|Lesson)\s+(\d+)/i);
+  if (match) return Number(match[1]);
+  return trailingNumber(label);
+}
+
 function parsePairTag(tag) {
   if (!tag) return { role: null, number: null };
   const match = /^([QA])(\d+)$/i.exec(tag.trim());
@@ -197,7 +208,7 @@ export async function syncContent() {
     }
 
     if (!lessonsBySlug.has(lessonSlug)) {
-      lessonsBySlug.set(lessonSlug, { slug: lessonSlug, title: f.Lesson, order: trailingNumber(f.Lesson), sectionsBySlug: new Map() });
+      lessonsBySlug.set(lessonSlug, { slug: lessonSlug, title: f.Lesson, order: lessonNumber(f.Lesson), sectionsBySlug: new Map() });
     }
     const lesson = lessonsBySlug.get(lessonSlug);
     if (!lesson.sectionsBySlug.has(sectionSlug)) {
