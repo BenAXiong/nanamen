@@ -21,6 +21,7 @@ export function PairDrillClient({
   completeTitle = "Drill complete",
   showContext = false,
   allowMarkTested = false,
+  onFinish,
 }: {
   pairs: Pair[];
   emptyMessage: string;
@@ -30,6 +31,7 @@ export function PairDrillClient({
   // set -- marking "tested" off the back of that would overstate what
   // actually got tested, so callers only pass this for a regular full run.
   allowMarkTested?: boolean;
+  onFinish: () => void;
 }) {
   const { play, isPlaying } = useAudioPlayer();
   const { gradeGotIt, gradeMissed, markSectionsTested } = useNanamenState();
@@ -130,17 +132,26 @@ export function PairDrillClient({
             {tested ? "Marked tested" : `Mark section${sectionKeys.length === 1 ? "" : "s"} as tested`}
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            setGrades({});
-            setIndex(0);
-            setPhase("question");
-          }}
-          className="rounded-lg bg-accent px-6 py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
-        >
-          Retest
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setGrades({});
+              setIndex(0);
+              setPhase("question");
+            }}
+            className="rounded-lg bg-accent px-6 py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
+          >
+            Retest
+          </button>
+          <button
+            type="button"
+            onClick={onFinish}
+            className="rounded-lg border border-stone-300 px-6 py-3 font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+          >
+            Home
+          </button>
+        </div>
       </div>
     );
   }

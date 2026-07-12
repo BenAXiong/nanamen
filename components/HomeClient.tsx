@@ -153,6 +153,7 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
           completeTitle={strengthenMode ? "Nice work" : "Session complete"}
           showContext={strengthenMode || deck.selectedLessonCount > 1}
           allowMarkTested={!strengthenMode}
+          onFinish={() => setScreen("picker")}
         />
       </div>
     );
