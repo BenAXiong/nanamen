@@ -122,7 +122,7 @@ export function DeckPicker({
                   </div>
                   {expanded ? (
                     <div className="pb-3 pl-6">
-                      <SentenceListClient section={section} />
+                      <SentenceListClient lesson={openLesson} section={section} />
                     </div>
                   ) : null}
                 </div>
