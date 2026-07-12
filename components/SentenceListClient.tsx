@@ -4,24 +4,16 @@ import { EyeOff, Eye } from "lucide-react";
 import { AudioButton } from "@/components/AudioButton";
 import { useAudioPlayer } from "@/lib/useAudioPlayer";
 import { useNanamenState, isSentenceSuspended } from "@/lib/state";
-import { pairId, type Lesson, type Section, type Sentence } from "@/lib/content";
+import type { Section } from "@/lib/content";
 
-export function SentenceListClient({ lesson, section }: { lesson: Lesson; section: Section }) {
+export function SentenceListClient({ section }: { section: Section }) {
   const { play, isPlaying } = useAudioPlayer();
-  const { state, toggleSuspendPair, toggleSuspendSentence } = useNanamenState();
-
-  const toggle = (sentence: Sentence) => {
-    if (sentence.pairNumber !== null) {
-      toggleSuspendPair(pairId(lesson.slug, section.slug, sentence.pairNumber));
-    } else {
-      toggleSuspendSentence(sentence.id);
-    }
-  };
+  const { state, toggleSuspendSentence } = useNanamenState();
 
   return (
     <div className="flex flex-col gap-2">
       {section.sentences.map((sentence) => {
-        const suspended = isSentenceSuspended(state, sentence, lesson.slug, section.slug);
+        const suspended = isSentenceSuspended(state, sentence.id);
         return (
           <div
             key={sentence.id}
@@ -33,19 +25,12 @@ export function SentenceListClient({ lesson, section }: { lesson: Lesson; sectio
           >
             <AudioButton url={sentence.audioUrl} playing={isPlaying} onPlay={() => play(sentence.audioUrl!)} size="sm" />
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                {sentence.pairTag ? (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
-                    {sentence.pairTag}
-                  </span>
-                ) : null}
-                <span className="truncate font-medium text-stone-900 dark:text-stone-50">{sentence.amis}</span>
-              </div>
+              <div className="truncate font-medium text-stone-900 dark:text-stone-50">{sentence.amis}</div>
               <div className="truncate text-sm text-stone-500 dark:text-stone-400">{sentence.zh}</div>
             </div>
             <button
               type="button"
-              onClick={() => toggle(sentence)}
+              onClick={() => toggleSuspendSentence(sentence.id)}
               aria-label={suspended ? "Unsuspend" : "Suspend"}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
             >

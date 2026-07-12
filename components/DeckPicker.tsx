@@ -13,6 +13,15 @@ function toggleColor(tone: PickerTone) {
   return tone === "amber" ? "bg-amber-500 border-amber-500" : "bg-accent border-accent";
 }
 
+// "Rekad 12 - 26/07/15" / "Lesson 12" -> "L12"; falls back to the first
+// number found, then the raw title if a lesson name has no number at all.
+function railLabel(title: string): string {
+  const named = title.match(/(?:Rekad|Lesson)\s*(\d+)/i);
+  if (named) return `L${named[1]}`;
+  const num = title.match(/\d+/);
+  return num ? `L${num[0]}` : title;
+}
+
 function Toggle({ on, onToggle, tone }: { on: boolean; onToggle: () => void; tone: PickerTone }) {
   return (
     <button
@@ -42,8 +51,9 @@ export function DeckPicker({
   deck: DeckSelectionApi;
   tone?: PickerTone;
 }) {
-  const rail = [...lessons].reverse(); // most recent first, matches "L12, L11, L10..." order
-  const [openLessonSlug, setOpenLessonSlug] = useState<string | null>(rail[0]?.slug ?? null);
+  const [openLessonSlug, setOpenLessonSlug] = useState<string | null>(
+    lessons[lessons.length - 1]?.slug ?? null,
+  );
   const [openSectionSlug, setOpenSectionSlug] = useState<string | null>(null);
   const openLesson = lessons.find((l) => l.slug === openLessonSlug) ?? null;
 
@@ -53,31 +63,8 @@ export function DeckPicker({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-stone-500 dark:text-stone-400">
-          {deck.selectedLessonCount} lesson{deck.selectedLessonCount === 1 ? "" : "s"} · {deck.selectedSectionCount}{" "}
-          section{deck.selectedSectionCount === 1 ? "" : "s"}
-        </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={deck.selectAll}
-            className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
-          >
-            全部
-          </button>
-          <button
-            type="button"
-            onClick={deck.clearAll}
-            className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
-          >
-            清楚
-          </button>
-        </div>
-      </div>
-
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {rail.map((lesson) => {
+        {lessons.map((lesson) => {
           const state = deck.lessonState(lesson.slug);
           const isOpen = lesson.slug === openLessonSlug;
           return (
@@ -95,7 +82,7 @@ export function DeckPicker({
                     : "border-stone-300 text-stone-600 dark:border-stone-600 dark:text-stone-300"
               }`}
             >
-              {lesson.title.replace(/^Rekad\s*/i, "L")}
+              {railLabel(lesson.title)}
             </button>
           );
         })}
@@ -130,7 +117,7 @@ export function DeckPicker({
                   </div>
                   {expanded ? (
                     <div className="pb-3 pl-6">
-                      <SentenceListClient lesson={openLesson} section={section} />
+                      <SentenceListClient section={section} />
                     </div>
                   ) : null}
                 </div>

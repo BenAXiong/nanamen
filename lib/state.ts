@@ -1,8 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { Sentence } from "@/lib/content";
-import { pairId } from "@/lib/content";
+import type { Pair } from "@/lib/content";
 
 const STORAGE_KEY = "nanamen-state";
 const STREAK_TO_CLEAR = 3;
@@ -15,14 +14,12 @@ type PairGrade = {
 export type StoredState = {
   version: 1;
   pairGrades: Record<string, PairGrade>;
-  suspendedPairs: string[];
   suspendedSentences: string[];
 };
 
 const emptyState: StoredState = {
   version: 1,
   pairGrades: {},
-  suspendedPairs: [],
   suspendedSentences: [],
 };
 
@@ -91,14 +88,6 @@ function dismissWeak(state: StoredState, id: string): StoredState {
   return { ...state, pairGrades: { ...state.pairGrades, [id]: { streak: 0, weak: false } } };
 }
 
-function toggleSuspendPair(state: StoredState, id: string): StoredState {
-  const suspended = state.suspendedPairs.includes(id);
-  return {
-    ...state,
-    suspendedPairs: suspended ? state.suspendedPairs.filter((p) => p !== id) : [...state.suspendedPairs, id],
-  };
-}
-
 function toggleSuspendSentence(state: StoredState, id: string): StoredState {
   const suspended = state.suspendedSentences.includes(id);
   return {
@@ -112,31 +101,26 @@ function toggleSuspendSentence(state: StoredState, id: string): StoredState {
 // --- Pure queries (take state explicitly so callers stay correctly reactive
 // via useMemo/render deps, instead of closing over a possibly-stale state) ---
 
-// Suspending a pair removes it from the weak pool even if its grade record
-// still says "weak" -- checking suspendedPairs here means we never need to
-// mutate pairGrades when suspending, and un-suspending naturally restores it.
+// Suspension is tracked per individual sentence, independent of pairing --
+// suspending a pair's Q half doesn't touch its A half. Whether a *pair* is
+// weak or drillable is derived from its two sentences below, not stored
+// separately.
 export function isPairWeak(state: StoredState, id: string): boolean {
-  return !!state.pairGrades[id]?.weak && !state.suspendedPairs.includes(id);
+  return !!state.pairGrades[id]?.weak;
 }
 
 export function getWeakPairIds(state: StoredState): string[] {
   return Object.keys(state.pairGrades).filter((id) => isPairWeak(state, id));
 }
 
-export function isPairSuspended(state: StoredState, id: string): boolean {
-  return state.suspendedPairs.includes(id);
+export function isSentenceSuspended(state: StoredState, sentenceId: string): boolean {
+  return state.suspendedSentences.includes(sentenceId);
 }
 
-export function isSentenceSuspended(
-  state: StoredState,
-  sentence: Sentence,
-  lessonSlug: string,
-  sectionSlug: string,
-): boolean {
-  if (sentence.pairNumber !== null) {
-    return state.suspendedPairs.includes(pairId(lessonSlug, sectionSlug, sentence.pairNumber));
-  }
-  return state.suspendedSentences.includes(sentence.id);
+// A pair is suspended for drilling purposes if either half is individually
+// suspended -- there's no separate pair-level suspend flag.
+export function isPairSuspended(state: StoredState, pair: Pick<Pair, "question" | "answer">): boolean {
+  return isSentenceSuspended(state, pair.question.id) || isSentenceSuspended(state, pair.answer.id);
 }
 
 export function useNanamenState() {
@@ -148,7 +132,6 @@ export function useNanamenState() {
     gradeGotIt: (id: string) => commit(gradeGotIt(state, id)),
     gradeMissed: (id: string) => commit(gradeMissed(state, id)),
     dismissWeak: (id: string) => commit(dismissWeak(state, id)),
-    toggleSuspendPair: (id: string) => commit(toggleSuspendPair(state, id)),
     toggleSuspendSentence: (id: string) => commit(toggleSuspendSentence(state, id)),
   };
 }

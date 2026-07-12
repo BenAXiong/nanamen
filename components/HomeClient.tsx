@@ -75,17 +75,33 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
 
   const weakSet = useMemo(() => new Set(weakPairIds), [weakPairIds]);
 
-  // Strengthen mode's content is narrowed to only lessons/sections that
-  // currently contain a weak, non-suspended pair -- everything else is
-  // hidden, not just greyed out.
+  // Weak pairs whose grade says "weak" AND aren't currently suspended -- the
+  // actual actionable Strengthen pool (suspending a pair removes it from the
+  // pool even if its grade record still says weak).
+  const activeWeakPairs = useMemo(() => {
+    const result: Pair[] = [];
+    for (const lesson of lessons) {
+      for (const section of lesson.sections) {
+        for (const p of getPairs(lesson, section)) {
+          if (weakSet.has(p.id) && !isPairSuspended(state, p)) result.push(p);
+        }
+      }
+    }
+    return result;
+  }, [lessons, weakSet, state]);
+
+  // Strengthen mode's content is narrowed to only the lessons/sections that
+  // contain at least one active weak pair -- everything else is hidden, not
+  // just greyed out.
   const weakLessons = useMemo(() => {
+    const activeSections = new Set(activeWeakPairs.map((p) => `${p.lessonSlug}/${p.sectionSlug}`));
     return lessons
       .map((lesson) => ({
         ...lesson,
-        sections: lesson.sections.filter((section) => getPairs(lesson, section).some((p) => weakSet.has(p.id))),
+        sections: lesson.sections.filter((s) => activeSections.has(`${lesson.slug}/${s.slug}`)),
       }))
       .filter((lesson) => lesson.sections.length > 0);
-  }, [lessons, weakSet]);
+  }, [lessons, activeWeakPairs]);
 
   const normalDeck = useDeckSelection(lessons);
   const strengthenDeck = useDeckSelection(weakLessons);
@@ -94,17 +110,22 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
   const deck = strengthenMode ? strengthenDeck : normalDeck;
   const tone = strengthenMode ? "amber" : "accent";
 
+  const reviewItems = useMemo(
+    () => collectSentences(activeLessons, deck.selection).filter((item) => !isSentenceSuspended(state, item.sentence.id)),
+    [activeLessons, deck.selection, state],
+  );
+  const testPairs = useMemo(
+    () => collectPairs(activeLessons, deck.selection).filter((p) => !isPairSuspended(state, p)),
+    [activeLessons, deck.selection, state],
+  );
+
   const startReview = () => {
-    const items = collectSentences(activeLessons, deck.selection).filter(
-      (item) => !isSentenceSuspended(state, item.sentence, item.lessonSlug, item.sectionSlug),
-    );
-    setSessionItems(shuffleOn ? shuffled(items) : items);
+    setSessionItems(shuffleOn ? shuffled(reviewItems) : reviewItems);
     setScreen("exposure");
   };
 
   const startTest = () => {
-    const pairs = collectPairs(activeLessons, deck.selection).filter((p) => !isPairSuspended(state, p.id));
-    setSessionPairs(shuffleOn ? shuffled(pairs) : pairs);
+    setSessionPairs(shuffleOn ? shuffled(testPairs) : testPairs);
     setScreen("test");
   };
 
@@ -133,16 +154,47 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex items-start justify-between py-6">
+      <header className="flex items-center justify-between py-6">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">Nanamen</h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">Amis · Malan</p>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={deck.selectAll}
+            className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+          >
+            全部
+          </button>
+          <button
+            type="button"
+            onClick={deck.clearAll}
+            className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+          >
+            清楚
+          </button>
+          <button
+            type="button"
+            onClick={() => setShuffleOn((v) => !v)}
+            aria-pressed={shuffleOn}
+            className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
+              shuffleOn
+                ? tone === "amber"
+                  ? "bg-amber-500 text-white"
+                  : "bg-accent text-white"
+                : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+            }`}
+            aria-label="Shuffle"
+          >
+            <Shuffle className="h-4 w-4" />
+          </button>
+          <ThemeToggle />
+        </div>
       </header>
 
-      <div className="mb-3 flex items-center justify-between">
-        {weakPairIds.length > 0 ? (
+      {activeWeakPairs.length > 0 ? (
+        <div className="mb-3">
           <button
             type="button"
             onClick={() => setStrengthenMode((m) => !m)}
@@ -152,48 +204,31 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
                 : "border border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-200"
             }`}
           >
-            Strengthen ({weakPairIds.length})
+            Strengthen ({activeWeakPairs.length})
           </button>
-        ) : (
-          <span />
-        )}
-        <button
-          type="button"
-          onClick={() => setShuffleOn((v) => !v)}
-          aria-pressed={shuffleOn}
-          className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
-            shuffleOn
-              ? tone === "amber"
-                ? "bg-amber-500 text-white"
-                : "bg-accent text-white"
-              : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
-          }`}
-          aria-label="Shuffle"
-        >
-          <Shuffle className="h-4 w-4" />
-        </button>
-      </div>
+        </div>
+      ) : null}
 
       <DeckPicker key={strengthenMode ? "strengthen" : "normal"} lessons={activeLessons} deck={deck} tone={tone} />
 
       <div className="mt-4 flex gap-3">
         <button
           type="button"
-          disabled={strengthenMode || deck.selectedSectionCount === 0}
+          disabled={strengthenMode || reviewItems.length === 0}
           onClick={startReview}
           className="flex-1 rounded-lg bg-accent px-3 py-3 text-center text-sm font-medium text-white transition active:scale-95 disabled:opacity-30 dark:bg-stone-100 dark:text-stone-900"
         >
-          Review ({deck.selectedSectionCount})
+          Review ({reviewItems.length})
         </button>
         <button
           type="button"
-          disabled={deck.selectedSectionCount === 0}
+          disabled={testPairs.length === 0}
           onClick={startTest}
           className={`flex-1 rounded-lg px-3 py-3 text-center text-sm font-medium text-white transition active:scale-95 disabled:opacity-30 ${
             tone === "amber" ? "bg-amber-500 hover:bg-amber-600" : "bg-accent"
           }`}
         >
-          Test ({deck.selectedSectionCount})
+          Test ({testPairs.length})
         </button>
       </div>
     </div>
