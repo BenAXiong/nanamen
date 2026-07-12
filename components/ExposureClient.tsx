@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Eye, EyeOff } from "lucide-react";
 import { AudioButton } from "@/components/AudioButton";
 import { useAudioPlayer } from "@/lib/useAudioPlayer";
+import { sectionKey, useNanamenState } from "@/lib/state";
 import type { Sentence } from "@/lib/content";
 
 export type ExposureItem = { lessonSlug: string; sectionSlug: string; sentence: Sentence };
@@ -14,10 +15,17 @@ export type ExposureItem = { lessonSlug: string; sectionSlug: string; sentence: 
 // as its own screen (not alongside the picker it was launched from).
 export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onFinish: () => void }) {
   const { play, isPlaying } = useAudioPlayer();
+  const { markSectionsComplete } = useNanamenState();
 
   const [index, setIndex] = useState(0);
   const current = items[index];
   const sentence = current?.sentence;
+
+  const sectionKeys = useMemo(
+    () => [...new Set(items.map((item) => sectionKey(item.lessonSlug, item.sectionSlug)))],
+    [items],
+  );
+  const [marked, setMarked] = useState(false);
 
   // Amis and Zh each start blurred and reveal independently on their own
   // tap -- reset together whenever a new sentence comes on screen.
@@ -88,6 +96,21 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
           <AudioButton url={sentence.audioUrl} playing={isPlaying} onPlay={() => play(sentence.audioUrl!)} />
         </div>
       </div>
+
+      {index === items.length - 1 ? (
+        <button
+          type="button"
+          disabled={marked}
+          onClick={() => {
+            markSectionsComplete(sectionKeys);
+            setMarked(true);
+          }}
+          className="mt-4 flex items-center justify-center gap-1.5 rounded-lg border border-green-300 py-3 font-medium text-green-700 transition active:scale-95 disabled:opacity-60 dark:border-green-800 dark:text-green-400"
+        >
+          <Check className="h-4 w-4" />
+          {marked ? "Marked complete" : `Mark section${sectionKeys.length === 1 ? "" : "s"} as complete`}
+        </button>
+      ) : null}
 
       <div className="mt-4 flex gap-3">
         <button

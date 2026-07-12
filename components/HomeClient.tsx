@@ -152,6 +152,7 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
           emptyMessage={strengthenMode ? "No weak items right now." : "No Q/A pairs to drill in this selection."}
           completeTitle={strengthenMode ? "Nice work" : "Session complete"}
           showContext={strengthenMode || deck.selectedLessonCount > 1}
+          allowMarkTested={!strengthenMode}
         />
       </div>
     );

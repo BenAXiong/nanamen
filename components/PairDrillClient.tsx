@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { AudioButton } from "@/components/AudioButton";
 import { useAudioPlayer } from "@/lib/useAudioPlayer";
-import { useNanamenState } from "@/lib/state";
+import { sectionKey, useNanamenState } from "@/lib/state";
 import type { Pair } from "@/lib/content";
 
 const GAP_FLOOR_SECONDS = 2;
@@ -20,19 +20,30 @@ export function PairDrillClient({
   emptyMessage,
   completeTitle = "Drill complete",
   showContext = false,
+  allowMarkTested = false,
 }: {
   pairs: Pair[];
   emptyMessage: string;
   completeTitle?: string;
   showContext?: boolean;
+  // A Strengthen run only drills a section's weak subset, not its full pair
+  // set -- marking "tested" off the back of that would overstate what
+  // actually got tested, so callers only pass this for a regular full run.
+  allowMarkTested?: boolean;
 }) {
   const { play, isPlaying } = useAudioPlayer();
-  const { gradeGotIt, gradeMissed } = useNanamenState();
+  const { gradeGotIt, gradeMissed, markSectionsTested } = useNanamenState();
 
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("question");
   const [grades, setGrades] = useState<Record<string, "got" | "missed">>({});
+  const [tested, setTested] = useState(false);
   const gapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sectionKeys = useMemo(
+    () => [...new Set(pairs.map((p) => sectionKey(p.lessonSlug, p.sectionSlug)))],
+    [pairs],
+  );
 
   const pair: Pair | undefined = pairs[index];
 
@@ -105,6 +116,20 @@ export function PairDrillClient({
             <div className="text-sm text-stone-500 dark:text-stone-400">Missed</div>
           </div>
         </div>
+        {allowMarkTested ? (
+          <button
+            type="button"
+            disabled={tested}
+            onClick={() => {
+              markSectionsTested(sectionKeys);
+              setTested(true);
+            }}
+            className="flex items-center gap-1.5 rounded-lg border border-green-300 px-6 py-3 font-medium text-green-700 transition active:scale-95 disabled:opacity-60 dark:border-green-800 dark:text-green-400"
+          >
+            <Check className="h-4 w-4" />
+            {tested ? "Marked tested" : `Mark section${sectionKeys.length === 1 ? "" : "s"} as tested`}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => {

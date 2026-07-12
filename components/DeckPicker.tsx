@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
 import type { Lesson } from "@/lib/content";
 import { SentenceListClient } from "@/components/SentenceListClient";
+import { getSectionStatus, sectionKey, useNanamenState } from "@/lib/state";
 import type { useDeckSelection } from "@/lib/useDeckSelection";
 
 export type DeckSelectionApi = ReturnType<typeof useDeckSelection>;
@@ -53,6 +54,7 @@ export function DeckPicker({
   deck: DeckSelectionApi;
   tone?: PickerTone;
 }) {
+  const { state } = useNanamenState();
   const [openLessonSlug, setOpenLessonSlug] = useState<string | null>(
     lessons[lessons.length - 1]?.slug ?? null,
   );
@@ -103,6 +105,7 @@ export function DeckPicker({
           <div className="flex flex-col gap-1">
             {openLesson.sections.map((section) => {
               const expanded = section.slug === openSectionSlug;
+              const status = getSectionStatus(state, sectionKey(openLesson.slug, section.slug));
               return (
                 <div key={section.slug} className="border-b border-stone-100 dark:border-stone-800">
                   <div className="flex items-center gap-2 py-2">
@@ -113,6 +116,11 @@ export function DeckPicker({
                     >
                       {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
                       <span className="truncate">{section.title}</span>
+                      {status === "tested" ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 fill-green-500 text-white dark:text-stone-900" />
+                      ) : status === "complete" ? (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                      ) : null}
                     </button>
                     <Toggle
                       on={deck.isSectionSelected(openLesson.slug, section.slug)}

@@ -11,16 +11,22 @@ type PairGrade = {
   weak: boolean;
 };
 
+// Keyed by "lessonSlug/sectionSlug". Absent = not started. "tested" implies
+// "complete" too -- it's a superset, not a separate track.
+export type SectionStatus = "complete" | "tested";
+
 export type StoredState = {
   version: 1;
   pairGrades: Record<string, PairGrade>;
   suspendedSentences: string[];
+  sectionStatus: Record<string, SectionStatus>;
 };
 
 const emptyState: StoredState = {
   version: 1,
   pairGrades: {},
   suspendedSentences: [],
+  sectionStatus: {},
 };
 
 // --- Tiny external store over localStorage, read via useSyncExternalStore so
@@ -98,6 +104,21 @@ function toggleSuspendSentence(state: StoredState, id: string): StoredState {
   };
 }
 
+// Marking complete never downgrades a section that's already "tested".
+function markSectionsComplete(state: StoredState, keys: string[]): StoredState {
+  const sectionStatus = { ...state.sectionStatus };
+  for (const key of keys) {
+    if (sectionStatus[key] !== "tested") sectionStatus[key] = "complete";
+  }
+  return { ...state, sectionStatus };
+}
+
+function markSectionsTested(state: StoredState, keys: string[]): StoredState {
+  const sectionStatus = { ...state.sectionStatus };
+  for (const key of keys) sectionStatus[key] = "tested";
+  return { ...state, sectionStatus };
+}
+
 // --- Pure queries (take state explicitly so callers stay correctly reactive
 // via useMemo/render deps, instead of closing over a possibly-stale state) ---
 
@@ -123,6 +144,14 @@ export function isPairSuspended(state: StoredState, pair: Pick<Pair, "question" 
   return isSentenceSuspended(state, pair.question.id) || isSentenceSuspended(state, pair.answer.id);
 }
 
+export function sectionKey(lessonSlug: string, sectionSlug: string): string {
+  return `${lessonSlug}/${sectionSlug}`;
+}
+
+export function getSectionStatus(state: StoredState, key: string): SectionStatus | "none" {
+  return state.sectionStatus[key] ?? "none";
+}
+
 export function useNanamenState() {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
@@ -133,5 +162,7 @@ export function useNanamenState() {
     gradeMissed: (id: string) => commit(gradeMissed(state, id)),
     dismissWeak: (id: string) => commit(dismissWeak(state, id)),
     toggleSuspendSentence: (id: string) => commit(toggleSuspendSentence(state, id)),
+    markSectionsComplete: (keys: string[]) => commit(markSectionsComplete(state, keys)),
+    markSectionsTested: (keys: string[]) => commit(markSectionsTested(state, keys)),
   };
 }
