@@ -2,15 +2,19 @@ import Link from "next/link";
 import { getLessons } from "@/lib/lessons.server";
 import { Screen } from "@/components/Screen";
 import { PracticeWeakEntry } from "@/components/PracticeWeakEntry";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function HomePage() {
   const lessons = getLessons();
 
   return (
     <Screen>
-      <header className="py-6">
-        <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">Nanamen</h1>
-        <p className="text-sm text-stone-500 dark:text-stone-400">Amis · Malan</p>
+      <header className="flex items-start justify-between py-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">Nanamen</h1>
+          <p className="text-sm text-stone-500 dark:text-stone-400">Amis · Malan</p>
+        </div>
+        <ThemeToggle />
       </header>
 
       <PracticeWeakEntry lessons={lessons.map((l) => ({ slug: l.slug, title: l.title }))} />

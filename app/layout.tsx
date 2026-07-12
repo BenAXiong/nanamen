@@ -30,7 +30,21 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // The theme script below adds/removes "dark" here before hydration,
+      // which never matches the server-rendered class list -- expected, not
+      // a real mismatch.
+      suppressHydrationWarning
     >
+      <head>
+        {/* Blocking (not deferred): must run before first paint so there's no
+            flash of the wrong theme. Defaults to dark -- see ThemeToggle.tsx --
+            unless "nanamen-theme" in localStorage says "light". */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("nanamen-theme");if(t==="light"){document.documentElement.classList.remove("dark")}else{document.documentElement.classList.add("dark")}}catch(e){document.documentElement.classList.add("dark")}})();`,
+          }}
+        />
+      </head>
       {/* suppressHydrationWarning: browser extensions (e.g. asbplayer) inject
           attributes into <body> before hydration; not a real mismatch. */}
       <body

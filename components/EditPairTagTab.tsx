@@ -67,7 +67,7 @@ export function EditPairTagTab({ sentences }: { sentences: LessonSentence[] }) {
           type="button"
           onClick={onSave}
           disabled={isPending}
-          className="rounded-lg bg-stone-900 px-4 py-1.5 text-sm font-medium text-white transition active:scale-95 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900"
+          className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white transition active:scale-95 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900"
         >
           {isPending ? "Saving…" : "Save"}
         </button>

@@ -80,7 +80,7 @@ export function ExposureClient({ lesson, section }: { lesson: Lesson; section: S
           aria-pressed={shuffleOn}
           className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
             shuffleOn
-              ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
+              ? "bg-accent text-white dark:bg-stone-100 dark:text-stone-900"
               : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
           }`}
           aria-label="Shuffle"
@@ -120,7 +120,7 @@ export function ExposureClient({ lesson, section }: { lesson: Lesson; section: S
           type="button"
           disabled={index === active.length - 1}
           onClick={() => goTo(Math.min(active.length - 1, index + 1))}
-          className="flex-1 rounded-lg bg-stone-900 py-3 font-medium text-white transition active:scale-95 disabled:opacity-30 dark:bg-stone-100 dark:text-stone-900"
+          className="flex-1 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 disabled:opacity-30 dark:bg-stone-100 dark:text-stone-900"
         >
           Next
         </button>

@@ -90,7 +90,7 @@ export function PairDrillClient({
             setIndex(0);
             setPhase("question");
           }}
-          className="rounded-lg bg-stone-900 px-6 py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
+          className="rounded-lg bg-accent px-6 py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
         >
           Restart
         </button>
@@ -174,7 +174,7 @@ export function PairDrillClient({
         <button
           type="button"
           onClick={advance}
-          className="mt-4 rounded-lg bg-stone-900 py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
+          className="mt-4 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
         >
           {index === pairs.length - 1 ? "Finish" : "Next pair"}
         </button>

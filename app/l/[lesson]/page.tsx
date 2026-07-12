@@ -31,7 +31,7 @@ export default async function LessonPage({ params }: { params: Promise<{ lesson:
               <div className="flex gap-2">
                 <Link
                   href={`/l/${lesson.slug}/${section.slug}/exposure`}
-                  className="flex-1 rounded-lg bg-stone-900 px-3 py-2 text-center text-sm font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
+                  className="flex-1 rounded-lg bg-accent px-3 py-2 text-center text-sm font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
                 >
                   Exposure
                 </Link>
