@@ -1,10 +1,12 @@
 import { ImageResponse } from "next/og";
 import { getLogoDataUri } from "@/lib/logo.server";
 
-export const size = { width: 512, height: 512 };
+export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-export default async function Icon() {
+// iOS applies no mask/crop of its own to the home-screen icon, so unlike
+// icon.tsx there's no "safe zone" padding to leave -- fill the frame.
+export default async function AppleIcon() {
   const logoSrc = await getLogoDataUri();
   return new ImageResponse(
     (
@@ -18,8 +20,7 @@ export default async function Icon() {
           background: "white",
         }}
       >
-        {/* ~86% of the frame, leaving padding for the maskable safe zone */}
-        <img src={logoSrc} width={440} height={440} />
+        <img src={logoSrc} width={160} height={160} />
       </div>
     ),
     { ...size },

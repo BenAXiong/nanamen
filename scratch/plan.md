@@ -116,17 +116,36 @@ Test count didn't match its own badge because it pulled every pair in a
 matched section instead of just the weak ones. Full original spec (now
 historical, some details superseded by the above): `scratch/nav-redesign-todo.md`.
 
-### Revamp workflow
-Not yet scoped -- Ben wants to revisit the content-authoring workflow (import/edit/sync loop). Needs a follow-up conversation on what specifically should change.
+### Revamp workflow -- DONE
+Resolved by the Deck Picker / review-flow redesign above -- that was the
+workflow Ben meant (how you pick content and move through Review/Test/
+Strengthen), not the separate content-authoring (import/edit/sync) loop,
+which remains as described in the Rekad-import section below.
 
-### Icons: PWA, favicon, etc.
-`app/icon.tsx` currently generates a placeholder glyph (`next/og` `ImageResponse`) used for both the PWA maskable icon and favicon. Needs real icon art.
+### Icons: PWA, favicon, splash -- DONE
+Real art: Ben dropped `Logo_barbell_1_nobg.png` (500x500, transparent) at
+the repo root, now moved to `public/logo.png`. `app/icon.tsx` and the new
+`app/apple-icon.tsx` both composite it onto a white background via
+`ImageResponse` (`lib/logo.server.ts` reads+base64-encodes the source once,
+shared by both) -- a maskable/home-screen icon shouldn't be transparent,
+it gets cropped to a shape by the OS. `icon.tsx` leaves ~14% padding for
+the maskable safe zone; `apple-icon.tsx` fills the frame since iOS applies
+no mask of its own. `manifest.ts`'s `background_color` changed to `#ffffff`
+so the Android/Chrome install splash matches. Removed the stale default
+`app/favicon.ico` (untouched create-next-app placeholder) -- `icon.tsx`'s
+PNG is now the sole favicon source via the auto-generated `<link>` tag.
 
 ### Add/remove sentences in `/edit`
 `/edit` currently only edits existing rows (text, section, pair tag) -- no way to add a new sentence or delete one from a lesson without going into Airtable directly.
 
-### Pair sentences in Exposure mode
-Exposure mode currently lists sentences sequentially, including both halves of a pair shown separately. Ben wants paired sentences (Qx/Ax) presented together in Exposure, not just in Fluency.
+### Pair sentences in Exposure mode -- LOWEST PRIORITY, do last
+Exposure mode currently lists sentences sequentially, including both halves
+of a pair shown separately. Ben wants paired sentences (Qx/Ax) presented
+together in Exposure -- deliberately deferred: pairing isn't strictly
+dualistic (some questions have both an affirmative and a negative answer,
+i.e. one question can link to more than one answer), so this needs a
+real linking model, not just "show Qx then its one Ax," before it's worth
+building.
 
 ### Add `/dialogue`
 A new route/mode -- not yet scoped beyond the name.
