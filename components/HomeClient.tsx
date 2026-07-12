@@ -154,42 +154,57 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex items-center justify-between py-6">
-        <div className="flex items-center gap-2">
+      <header className="py-6">
+        <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">Nanamen</h1>
-          <p className="text-sm text-stone-500 dark:text-stone-400">Amis · Malan</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShuffleOn((v) => !v)}
+              aria-pressed={shuffleOn}
+              className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
+                shuffleOn
+                  ? tone === "amber"
+                    ? "bg-amber-500 text-white dark:bg-purple-500"
+                    : "bg-accent text-white"
+                  : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+              }`}
+              aria-label="Shuffle"
+            >
+              <Shuffle className="h-4 w-4" />
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={deck.selectAll}
-            className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
-          >
-            全部
-          </button>
-          <button
-            type="button"
-            onClick={deck.clearAll}
-            className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
-          >
-            清楚
-          </button>
-          <button
-            type="button"
-            onClick={() => setShuffleOn((v) => !v)}
-            aria-pressed={shuffleOn}
-            className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
-              shuffleOn
-                ? tone === "amber"
-                  ? "bg-amber-500 text-white dark:bg-purple-500"
-                  : "bg-accent text-white"
-                : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
-            }`}
-            aria-label="Shuffle"
-          >
-            <Shuffle className="h-4 w-4" />
-          </button>
-          <ThemeToggle />
+        <div className="mt-1 flex items-center justify-between">
+          <p className="text-sm text-stone-500 dark:text-stone-400">Amis · Malan</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={deck.selectAll}
+              className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+            >
+              全部
+            </button>
+            <button
+              type="button"
+              onClick={deck.clearAll}
+              className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+            >
+              清楚
+            </button>
+            {activeWeakPairs.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setStrengthenMode((m) => !m)}
+                className={`rounded-lg border border-purple-400 px-2.5 py-1 text-xs font-medium text-purple-700 transition active:scale-95 dark:border-purple-600 dark:text-purple-300 ${
+                  strengthenMode ? "bg-purple-50 dark:bg-purple-950/40" : ""
+                }`}
+              >
+                加强({activeWeakPairs.length})
+              </button>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -214,19 +229,6 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
         >
           Test ({testPairs.length})
         </button>
-        {activeWeakPairs.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => setStrengthenMode((m) => !m)}
-            className={`flex-1 rounded-lg px-3 py-3 text-center text-sm font-medium text-white transition active:scale-95 ${
-              strengthenMode
-                ? "bg-purple-700 hover:bg-purple-800"
-                : "bg-purple-500 hover:bg-purple-600"
-            }`}
-          >
-            Strengthen ({activeWeakPairs.length})
-          </button>
-        ) : null}
       </div>
     </div>
   );

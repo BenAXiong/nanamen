@@ -25,6 +25,19 @@ function allSelection(lessons: Lesson[]): Selection {
 export function useDeckSelection(lessons: Lesson[]) {
   const [selection, setSelection] = useState<Selection>(() => defaultSelection(lessons));
 
+  // `lessons` can start empty and populate a moment later (e.g. the
+  // Strengthen deck's weak-lessons list is empty until useNanamenState's
+  // localStorage-backed data hydrates), in which case the lazy initializer
+  // above computed its default off that empty array and would otherwise be
+  // stuck with nothing selected forever. Apply the real default exactly
+  // once, the first time `lessons` actually has content -- not on every
+  // later change, so a deliberate "clear all" isn't silently undone.
+  const [defaulted, setDefaulted] = useState(lessons.length > 0);
+  if (!defaulted && lessons.length > 0) {
+    setDefaulted(true);
+    setSelection(defaultSelection(lessons));
+  }
+
   const lessonState = useCallback(
     (lessonSlug: string): LessonSelectionState => {
       const lesson = lessons.find((l) => l.slug === lessonSlug);
