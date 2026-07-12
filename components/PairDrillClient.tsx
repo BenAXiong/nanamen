@@ -9,7 +9,7 @@ import type { Pair } from "@/lib/content";
 
 const GAP_FLOOR_SECONDS = 2;
 
-type Phase = "gap" | "answer";
+type Phase = "question" | "gap" | "answer";
 
 // Generic Q/A drill: used both for a single Section's Fluency mode and for
 // the cross-section Practice-weak-items drill -- the caller resolves and
@@ -29,7 +29,7 @@ export function PairDrillClient({
   const { gradeGotIt, gradeMissed } = useNanamenState();
 
   const [index, setIndex] = useState(0);
-  const [phase, setPhase] = useState<Phase>("gap");
+  const [phase, setPhase] = useState<Phase>("question");
   const [grades, setGrades] = useState<Record<string, "got" | "missed">>({});
   const gapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -47,17 +47,28 @@ export function PairDrillClient({
     setQZhRevealed(false);
   }
 
-  // Question audio autoplays and the answer-reveal timer starts
-  // automatically as soon as a pair is on screen -- no manual "reveal" step.
+  // Question audio autoplays as soon as a pair is on screen. The gap timer
+  // (silence window standing in for "your turn to answer") only starts once
+  // that audio actually finishes, not alongside it -- otherwise the "your
+  // turn" window overlaps with still hearing the question. Once the timer
+  // elapses, the answer reveals -- its audio does NOT autoplay, the user
+  // taps to hear it like any other audio button.
   useEffect(() => {
     if (!pair) return;
-    if (pair.question.audioUrl) play(pair.question.audioUrl);
-    setPhase("gap");
-    const seconds = Math.max(pair.answer.durationSeconds ?? 0, GAP_FLOOR_SECONDS);
-    gapTimer.current = setTimeout(() => {
-      setPhase("answer");
-      if (pair.answer.audioUrl) play(pair.answer.audioUrl);
-    }, seconds * 1000);
+    setPhase("question");
+
+    const startGap = () => {
+      setPhase("gap");
+      const seconds = Math.max(pair.answer.durationSeconds ?? 0, GAP_FLOOR_SECONDS);
+      gapTimer.current = setTimeout(() => setPhase("answer"), seconds * 1000);
+    };
+
+    if (pair.question.audioUrl) {
+      play(pair.question.audioUrl, startGap);
+    } else {
+      startGap();
+    }
+
     return () => {
       if (gapTimer.current) clearTimeout(gapTimer.current);
     };
@@ -98,7 +109,7 @@ export function PairDrillClient({
           onClick={() => {
             setGrades({});
             setIndex(0);
-            setPhase("gap");
+            setPhase("question");
           }}
           className="rounded-lg bg-accent px-6 py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
         >
@@ -110,6 +121,10 @@ export function PairDrillClient({
 
   const revealed = phase === "answer";
   const graded = !!grades[pair.id];
+  // Once the answer is revealed, the question stops being peek-on-tap and
+  // is just shown too, regardless of whether it was individually tapped.
+  const qAmisShown = qAmisRevealed || revealed;
+  const qZhShown = qZhRevealed || revealed;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -130,7 +145,7 @@ export function PairDrillClient({
             <p
               onClick={() => setQAmisRevealed((r) => !r)}
               className={`cursor-pointer text-2xl font-medium text-stone-900 transition-all dark:text-stone-50 ${
-                qAmisRevealed ? "" : "select-none blur-sm"
+                qAmisShown ? "" : "select-none blur-sm"
               }`}
             >
               {pair.question.amis}
@@ -138,7 +153,7 @@ export function PairDrillClient({
             <p
               onClick={() => setQZhRevealed((r) => !r)}
               className={`mt-1 cursor-pointer text-stone-600 transition-all dark:text-stone-300 ${
-                qZhRevealed ? "" : "select-none blur-sm"
+                qZhShown ? "" : "select-none blur-sm"
               }`}
             >
               {pair.question.zh}
