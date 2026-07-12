@@ -46,6 +46,7 @@ yarn-error.log*
 !/scratch/README.md
 !/scratch/*-manual-config.json
 !/scratch/plan.md
+!/scratch/nav-redesign-todo.md
 !/scratch/design/
 !/scratch/design/*.html
 

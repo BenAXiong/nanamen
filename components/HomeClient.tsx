@@ -1,0 +1,201 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Shuffle } from "lucide-react";
+import { getPairs, type Lesson, type Pair } from "@/lib/content";
+import { useNanamenState, isPairSuspended, isSentenceSuspended } from "@/lib/state";
+import { useDeckSelection, type Selection } from "@/lib/useDeckSelection";
+import { DeckPicker } from "@/components/DeckPicker";
+import { ExposureClient, type ExposureItem } from "@/components/ExposureClient";
+import { PairDrillClient } from "@/components/PairDrillClient";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
+type ActiveScreen = "picker" | "exposure" | "test";
+
+function shuffled<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function collectSentences(lessons: Lesson[], selection: Selection): ExposureItem[] {
+  const items: ExposureItem[] = [];
+  for (const lesson of lessons) {
+    const set = selection[lesson.slug];
+    if (!set || set.size === 0) continue;
+    for (const section of lesson.sections) {
+      if (!set.has(section.slug)) continue;
+      for (const sentence of section.sentences) {
+        items.push({ lessonSlug: lesson.slug, sectionSlug: section.slug, sentence });
+      }
+    }
+  }
+  return items;
+}
+
+function collectPairs(lessons: Lesson[], selection: Selection): Pair[] {
+  const pairs: Pair[] = [];
+  for (const lesson of lessons) {
+    const set = selection[lesson.slug];
+    if (!set || set.size === 0) continue;
+    for (const section of lesson.sections) {
+      if (!set.has(section.slug)) continue;
+      pairs.push(...getPairs(lesson, section));
+    }
+  }
+  return pairs;
+}
+
+function BackBar({ onBack, title }: { onBack: () => void; title: string }) {
+  return (
+    <div className="mb-3 flex items-center gap-3">
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+        aria-label="Back"
+      >
+        ←
+      </button>
+      <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-50">{title}</h1>
+    </div>
+  );
+}
+
+export function HomeClient({ lessons }: { lessons: Lesson[] }) {
+  const { state, weakPairIds } = useNanamenState();
+  const [strengthenMode, setStrengthenMode] = useState(false);
+  const [shuffleOn, setShuffleOn] = useState(false);
+  const [screen, setScreen] = useState<ActiveScreen>("picker");
+  const [sessionItems, setSessionItems] = useState<ExposureItem[]>([]);
+  const [sessionPairs, setSessionPairs] = useState<Pair[]>([]);
+
+  const weakSet = useMemo(() => new Set(weakPairIds), [weakPairIds]);
+
+  // Strengthen mode's content is narrowed to only lessons/sections that
+  // currently contain a weak, non-suspended pair -- everything else is
+  // hidden, not just greyed out.
+  const weakLessons = useMemo(() => {
+    return lessons
+      .map((lesson) => ({
+        ...lesson,
+        sections: lesson.sections.filter((section) => getPairs(lesson, section).some((p) => weakSet.has(p.id))),
+      }))
+      .filter((lesson) => lesson.sections.length > 0);
+  }, [lessons, weakSet]);
+
+  const normalDeck = useDeckSelection(lessons);
+  const strengthenDeck = useDeckSelection(weakLessons);
+
+  const activeLessons = strengthenMode ? weakLessons : lessons;
+  const deck = strengthenMode ? strengthenDeck : normalDeck;
+  const tone = strengthenMode ? "amber" : "accent";
+
+  const startReview = () => {
+    const items = collectSentences(activeLessons, deck.selection).filter(
+      (item) => !isSentenceSuspended(state, item.sentence, item.lessonSlug, item.sectionSlug),
+    );
+    setSessionItems(shuffleOn ? shuffled(items) : items);
+    setScreen("exposure");
+  };
+
+  const startTest = () => {
+    const pairs = collectPairs(activeLessons, deck.selection).filter((p) => !isPairSuspended(state, p.id));
+    setSessionPairs(shuffleOn ? shuffled(pairs) : pairs);
+    setScreen("test");
+  };
+
+  if (screen === "exposure") {
+    return (
+      <div className="flex flex-1 flex-col">
+        <BackBar onBack={() => setScreen("picker")} title="Exposure" />
+        <ExposureClient items={sessionItems} />
+      </div>
+    );
+  }
+
+  if (screen === "test") {
+    return (
+      <div className="flex flex-1 flex-col">
+        <BackBar onBack={() => setScreen("picker")} title={strengthenMode ? "Strengthen" : "Automation"} />
+        <PairDrillClient
+          pairs={sessionPairs}
+          emptyMessage={strengthenMode ? "No weak items right now." : "No Q/A pairs to drill in this selection."}
+          completeTitle={strengthenMode ? "Nice work" : "Session complete"}
+          showContext={strengthenMode || deck.selectedLessonCount > 1}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <header className="flex items-start justify-between py-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">Nanamen</h1>
+          <p className="text-sm text-stone-500 dark:text-stone-400">Amis · Malan</p>
+        </div>
+        <ThemeToggle />
+      </header>
+
+      <div className="mb-3 flex items-center justify-between">
+        {weakPairIds.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setStrengthenMode((m) => !m)}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+              strengthenMode
+                ? "bg-amber-500 text-white"
+                : "border border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-200"
+            }`}
+          >
+            Strengthen ({weakPairIds.length})
+          </button>
+        ) : (
+          <span />
+        )}
+        <button
+          type="button"
+          onClick={() => setShuffleOn((v) => !v)}
+          aria-pressed={shuffleOn}
+          className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
+            shuffleOn
+              ? tone === "amber"
+                ? "bg-amber-500 text-white"
+                : "bg-accent text-white"
+              : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+          }`}
+          aria-label="Shuffle"
+        >
+          <Shuffle className="h-4 w-4" />
+        </button>
+      </div>
+
+      <DeckPicker key={strengthenMode ? "strengthen" : "normal"} lessons={activeLessons} deck={deck} tone={tone} />
+
+      <div className="mt-4 flex gap-3">
+        <button
+          type="button"
+          disabled={strengthenMode || deck.selectedSectionCount === 0}
+          onClick={startReview}
+          className="flex-1 rounded-lg bg-accent px-3 py-3 text-center text-sm font-medium text-white transition active:scale-95 disabled:opacity-30 dark:bg-stone-100 dark:text-stone-900"
+        >
+          Review ({deck.selectedSectionCount})
+        </button>
+        <button
+          type="button"
+          disabled={deck.selectedSectionCount === 0}
+          onClick={startTest}
+          className={`flex-1 rounded-lg px-3 py-3 text-center text-sm font-medium text-white transition active:scale-95 disabled:opacity-30 ${
+            tone === "amber" ? "bg-amber-500 hover:bg-amber-600" : "bg-accent"
+          }`}
+        >
+          Test ({deck.selectedSectionCount})
+        </button>
+      </div>
+    </div>
+  );
+}

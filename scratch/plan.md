@@ -100,6 +100,11 @@ No login, no DB/backend beyond the Airtable content read, no cross-device sync, 
 ### Dark/light mode toggle -- DONE
 Built: toggle on the home page header (sun/moon icon), class-based Tailwind v4 dark mode (`@custom-variant dark`), defaults to dark via a blocking pre-paint script, persisted in localStorage (`nanamen-theme`), light mode's primary actions use an Airtable-blue accent (`#2D7FF9`).
 
+### Nav redesign -- IN PROGRESS
+Replacing the 4-tab IA (`nav-redesign-brief.md`) with a single unified
+home screen based on Claude Design direction 2d (deck picker rail).
+Full spec: `scratch/nav-redesign-todo.md`.
+
 ### Revamp workflow
 Not yet scoped -- Ben wants to revisit the content-authoring workflow (import/edit/sync loop). Needs a follow-up conversation on what specifically should change.
 

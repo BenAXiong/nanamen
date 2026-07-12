@@ -1,53 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Shuffle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { AudioButton } from "@/components/AudioButton";
 import { useAudioPlayer } from "@/lib/useAudioPlayer";
-import { useNanamenState, isSentenceSuspended } from "@/lib/state";
-import type { Lesson, Section } from "@/lib/content";
+import type { Sentence } from "@/lib/content";
 
-function shuffledIndices(length: number) {
-  const arr = Array.from({ length }, (_, i) => i);
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
+export type ExposureItem = { lessonSlug: string; sectionSlug: string; sentence: Sentence };
 
-export function ExposureClient({ lesson, section }: { lesson: Lesson; section: Section }) {
+// Takes an already-assembled, already-ordered item list -- suspend
+// filtering and shuffle both happen once upstream (in HomeClient) when the
+// session is started, rather than live here, since this only ever renders
+// as its own screen (not alongside the picker it was launched from).
+export function ExposureClient({ items }: { items: ExposureItem[] }) {
   const { play, isPlaying } = useAudioPlayer();
-  const { state } = useNanamenState();
 
-  const active = useMemo(
-    () => section.sentences.filter((s) => !isSentenceSuspended(state, s, lesson.slug, section.slug)),
-    [section.sentences, state, lesson.slug, section.slug],
-  );
-
-  const [order, setOrder] = useState<number[]>(() => active.map((_, i) => i));
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [shuffleOn, setShuffleOn] = useState(false);
 
-  // Reset paging when the active sentence set itself changes underneath us
-  // (e.g. a suspend toggled elsewhere) -- adjusted during render rather than
-  // via useEffect+setState, per https://react.dev/learn/you-might-not-need-an-effect
-  const activeKey = active.map((s) => s.id).join("|");
-  const [committedKey, setCommittedKey] = useState(activeKey);
-  if (activeKey !== committedKey) {
-    setCommittedKey(activeKey);
-    setOrder(active.map((_, i) => i));
-    setIndex(0);
-    setRevealed(false);
-    setShuffleOn(false);
-  }
+  const current = items[index];
+  const sentence = current?.sentence;
 
-  const sentence = active[order[index]];
-
-  // Autoplay is a real side effect (imperative Audio API call), so it stays
-  // in an effect -- but state resets around navigation happen in the click
-  // handlers below instead, so this effect never calls setState itself.
   useEffect(() => {
     if (sentence?.audioUrl) play(sentence.audioUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -62,31 +34,12 @@ export function ExposureClient({ lesson, section }: { lesson: Lesson; section: S
     setRevealed(false);
   };
 
-  const toggleShuffle = () => {
-    setOrder(shuffleOn ? active.map((_, i) => i) : shuffledIndices(active.length));
-    setShuffleOn(!shuffleOn);
-    goTo(0);
-  };
-
   return (
     <div className="flex flex-1 flex-col">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm text-stone-500 dark:text-stone-400">
-          {index + 1} / {active.length}
+          {index + 1} / {items.length}
         </span>
-        <button
-          type="button"
-          onClick={toggleShuffle}
-          aria-pressed={shuffleOn}
-          className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
-            shuffleOn
-              ? "bg-accent text-white dark:bg-stone-100 dark:text-stone-900"
-              : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
-          }`}
-          aria-label="Shuffle"
-        >
-          <Shuffle className="h-4 w-4" />
-        </button>
       </div>
 
       <div
@@ -118,8 +71,8 @@ export function ExposureClient({ lesson, section }: { lesson: Lesson; section: S
         </button>
         <button
           type="button"
-          disabled={index === active.length - 1}
-          onClick={() => goTo(Math.min(active.length - 1, index + 1))}
+          disabled={index === items.length - 1}
+          onClick={() => goTo(Math.min(items.length - 1, index + 1))}
           className="flex-1 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 disabled:opacity-30 dark:bg-stone-100 dark:text-stone-900"
         >
           Next
