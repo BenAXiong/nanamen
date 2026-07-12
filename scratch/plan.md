@@ -45,7 +45,10 @@ Lang/dialect layer was data-only (not a UI picker) since only amis/malan exists.
 - Card: Amis (large) and Zh (smaller) each start **blurred and reveal independently on their own tap** — not a single whole-card tap, and not "Amis always visible, only Zh gated." Audio auto-plays on card show.
 - Card is vertically centered in the available space (`components/ExposureClient.tsx`, `h-[38vh]`); Prev/Next buttons pinned at the bottom.
 - On the last card, the "Next" button becomes "Home" and returns to the picker instead of just disabling.
-- No grading, no timer, no persisted state. Suspended sentences are excluded before the session starts.
+- Header has two more controls, left to right: a Pause (suspend) button, then the Amis eye toggle. Suspend affects the *next* session only (doesn't retroactively change this one's fixed item list) and auto-advances, same as tapping Next. The eye toggle unblurs Amis for every remaining card this session, reset back to blurred next time Review starts.
+- Swipe left/right works as an alternative to Prev/Next; swipe down works as an alternative to the suspend button. Plain touchstart/touchend delta tracking, no gesture library.
+- On the last card, a "Mark section(s) as complete" button appears above Prev/Home (see Section status below).
+- No grading, no timer, no persisted state beyond suspend/complete. Suspended sentences are excluded before the session starts.
 
 ## Automation mode ("Test") -- question/answer real-time drill
 Only sentences with a `Pair Tag` participate, pulled as `Qx`/`Ax` pairs across whatever's ticked in the picker (or the weak pool, in Strengthen mode — see below). Suspended pairs (either half individually suspended) are excluded.
@@ -56,7 +59,14 @@ Per-pair flow, `components/PairDrillClient.tsx`:
 3. Timer elapses → **answer phase**: overlay drops, the answer's Amis/Zh unblur automatically (no extra tap needed), and the question's Amis/Zh unblur too regardless of their own tap state. The answer's audio does **not** autoplay — tap it like any other audio button.
 4. Missed/Got it appear below the card (permanently red/green, not just when selected). **Next/Finish is disabled until the pair is actually graded.**
 
-End of session: summary screen with tally (Got it / Missed counts) and a **Retest** button (renamed from Restart).
+End of session: summary screen with tally (Got it / Missed counts), a **Retest** button (renamed from Restart), and a **Home** button next to it. A regular (non-Strengthen) run also gets a "Mark section(s) as tested" button here (see Section status below) -- excluded for Strengthen, which only drills a section's weak subset, not its full pair set, so marking "tested" off that would overstate it.
+
+## Section status: complete / tested (localStorage)
+Tracked in `lib/state.ts`'s `sectionStatus` map, keyed by `lessonSlug/sectionSlug`. Two levels, "tested" is a superset of "complete" (marking complete never downgrades an already-tested section):
+- **complete**: set via Review's "Mark section(s) as complete" button, for every section that contributed a sentence to that session.
+- **tested**: set via Automation's "Mark section(s) as tested" button (regular runs only, not Strengthen).
+
+Surfaced in the deck picker (`DeckPicker.tsx`) as a small badge, left of each label: plain grey circle (not started) -> green circle (complete) -> green circle **and** green tick (tested). The open lesson's header row gets the same badge, auto-derived (not stored separately) from whether *every* one of its sections has reached that level.
 
 ## Weak items & Suspend (localStorage)
 - **Weak-item pool**: keyed by pair id, globally unique. A pair enters the pool on a "Missed" grade, is removed after 3 consecutive "Got it" grades, or can be manually dismissed. Also manually toggleable directly: the expanded sentence list (in the deck picker) has a barbell icon next to the suspend eye icon, left of it, shown only for Q/A sentences — toggling it calls the same gradeMissed/dismissWeak transitions as a real grade would.
