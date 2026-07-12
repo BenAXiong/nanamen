@@ -11,7 +11,7 @@ export type ExposureItem = { lessonSlug: string; sectionSlug: string; sentence: 
 // filtering and shuffle both happen once upstream (in HomeClient) when the
 // session is started, rather than live here, since this only ever renders
 // as its own screen (not alongside the picker it was launched from).
-export function ExposureClient({ items }: { items: ExposureItem[] }) {
+export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onFinish: () => void }) {
   const { play, isPlaying } = useAudioPlayer();
 
   const [index, setIndex] = useState(0);
@@ -49,7 +49,7 @@ export function ExposureClient({ items }: { items: ExposureItem[] }) {
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") setRevealed((r) => !r);
         }}
-        className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-6 rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900"
+        className="flex h-[38vh] cursor-pointer flex-col items-center justify-center gap-6 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900"
       >
         <p className="text-2xl font-medium text-stone-900 dark:text-stone-50">{sentence.amis}</p>
         {revealed ? (
@@ -71,11 +71,10 @@ export function ExposureClient({ items }: { items: ExposureItem[] }) {
         </button>
         <button
           type="button"
-          disabled={index === items.length - 1}
-          onClick={() => goTo(Math.min(items.length - 1, index + 1))}
-          className="flex-1 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 disabled:opacity-30 dark:bg-stone-100 dark:text-stone-900"
+          onClick={() => (index === items.length - 1 ? onFinish() : goTo(Math.min(items.length - 1, index + 1)))}
+          className="flex-1 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
         >
-          Next
+          {index === items.length - 1 ? "Home" : "Next"}
         </button>
       </div>
     </div>

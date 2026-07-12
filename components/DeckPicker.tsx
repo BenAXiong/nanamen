@@ -10,7 +10,9 @@ export type DeckSelectionApi = ReturnType<typeof useDeckSelection>;
 export type PickerTone = "accent" | "amber";
 
 function toggleColor(tone: PickerTone) {
-  return tone === "amber" ? "bg-amber-500 border-amber-500" : "bg-accent border-accent";
+  return tone === "amber"
+    ? "bg-amber-500 border-amber-500 dark:bg-purple-500 dark:border-purple-500"
+    : "bg-accent border-accent";
 }
 
 // "Rekad 12 - 26/07/15" / "Lesson 12" -> "L12"; falls back to the first
@@ -76,11 +78,11 @@ export function DeckPicker({
               className={`flex h-16 w-19 shrink-0 flex-col items-center justify-center rounded-xl border-2 font-rail text-3xl font-bold transition ${
                 isOpen
                   ? tone === "amber"
-                    ? "border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                    ? "border-amber-500 bg-amber-50 text-amber-700 dark:border-purple-500 dark:bg-purple-950/40 dark:text-purple-200"
                     : "border-accent bg-accent/10 text-accent"
                   : enabled
                     ? tone === "amber"
-                      ? "border-amber-500 text-amber-600 dark:text-amber-300"
+                      ? "border-amber-500 text-amber-600 dark:border-purple-500 dark:text-purple-300"
                       : "border-accent text-accent"
                     : "border-stone-200 text-stone-400 dark:border-stone-700 dark:text-stone-500"
               }`}

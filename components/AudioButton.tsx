@@ -24,7 +24,7 @@ export function AudioButton({
         onPlay();
       }}
       aria-label="Play audio"
-      className={`flex ${dimensions} shrink-0 items-center justify-center rounded-full bg-amber-500 text-white shadow-md transition active:scale-95 hover:bg-amber-600 ${
+      className={`flex ${dimensions} shrink-0 items-center justify-center rounded-full bg-amber-500 text-white shadow-md transition active:scale-95 hover:bg-amber-600 dark:bg-purple-500 dark:hover:bg-purple-600 ${
         playing ? "animate-pulse" : ""
       }`}
     >

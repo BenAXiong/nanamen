@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Shuffle } from "lucide-react";
+import { Shuffle, X } from "lucide-react";
 import { getPairs, type Lesson, type Pair } from "@/lib/content";
 import { useNanamenState, isPairSuspended, isSentenceSuspended } from "@/lib/state";
 import { useDeckSelection, type Selection } from "@/lib/useDeckSelection";
@@ -56,9 +56,9 @@ function BackBar({ onBack, title }: { onBack: () => void; title: string }) {
         type="button"
         onClick={onBack}
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
-        aria-label="Back"
+        aria-label="Close"
       >
-        ←
+        <X className="h-5 w-5" />
       </button>
       <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-50">{title}</h1>
     </div>
@@ -133,7 +133,7 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
     return (
       <div className="flex flex-1 flex-col">
         <BackBar onBack={() => setScreen("picker")} title="Exposure" />
-        <ExposureClient items={sessionItems} />
+        <ExposureClient items={sessionItems} onFinish={() => setScreen("picker")} />
       </div>
     );
   }
@@ -155,7 +155,7 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between py-6">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">Nanamen</h1>
           <div className="text-xs leading-tight text-stone-500 dark:text-stone-400">
             <div>Amis</div>
@@ -184,7 +184,7 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
             className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
               shuffleOn
                 ? tone === "amber"
-                  ? "bg-amber-500 text-white"
+                  ? "bg-amber-500 text-white dark:bg-purple-500"
                   : "bg-accent text-white"
                 : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
             }`}
@@ -203,8 +203,8 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
             onClick={() => setStrengthenMode((m) => !m)}
             className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
               strengthenMode
-                ? "bg-amber-500 text-white"
-                : "border border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-200"
+                ? "bg-amber-500 text-white dark:bg-purple-500"
+                : "border border-amber-300 text-amber-800 dark:border-purple-700 dark:text-purple-200"
             }`}
           >
             Strengthen ({activeWeakPairs.length})
@@ -228,7 +228,7 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
           disabled={testPairs.length === 0}
           onClick={startTest}
           className={`flex-1 rounded-lg px-3 py-3 text-center text-sm font-medium text-white transition active:scale-95 disabled:opacity-30 ${
-            tone === "amber" ? "bg-amber-500 hover:bg-amber-600" : "bg-accent"
+            tone === "amber" ? "bg-amber-500 hover:bg-amber-600 dark:bg-purple-500 dark:hover:bg-purple-600" : "bg-accent"
           }`}
         >
           Test ({testPairs.length})

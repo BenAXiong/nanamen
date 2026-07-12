@@ -41,6 +41,13 @@ export function PairDrillClient({
 
   const pair: Pair | undefined = pairs[index];
 
+  // Question audio autoplays as soon as a pair is on screen (fresh session
+  // start, or after tapping "Next").
+  useEffect(() => {
+    if (pair?.question.audioUrl) play(pair.question.audioUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pair?.id]);
+
   const startGap = () => {
     if (!pair) return;
     setPhase("gap");
@@ -92,11 +99,14 @@ export function PairDrillClient({
           }}
           className="rounded-lg bg-accent px-6 py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
         >
-          Restart
+          Retest
         </button>
       </div>
     );
   }
+
+  const revealed = phase === "answer";
+  const blurUntilRevealed = `transition-all ${revealed ? "" : "select-none blur-sm"}`;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -111,10 +121,10 @@ export function PairDrillClient({
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
+      <div className="flex h-[38vh] flex-col items-center justify-center gap-4 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-stone-400 dark:text-stone-600">Question</p>
-          <p className="mt-1 text-2xl font-medium text-stone-900 dark:text-stone-50">{pair.question.amis}</p>
+          <p className="text-2xl font-medium text-stone-900 dark:text-stone-50">{pair.question.amis}</p>
+          <p className={`mt-1 text-stone-600 dark:text-stone-300 ${blurUntilRevealed}`}>{pair.question.zh}</p>
         </div>
         <AudioButton url={pair.question.audioUrl} playing={isPlaying} onPlay={() => play(pair.question.audioUrl!)} />
 
@@ -122,7 +132,7 @@ export function PairDrillClient({
           <button
             type="button"
             onClick={startGap}
-            className="rounded-lg bg-amber-500 px-6 py-3 font-medium text-white transition active:scale-95 hover:bg-amber-600"
+            className="rounded-lg bg-amber-500 px-6 py-3 font-medium text-white transition active:scale-95 hover:bg-amber-600 dark:bg-purple-500 dark:hover:bg-purple-600"
           >
             Reveal answer
           </button>
@@ -132,51 +142,50 @@ export function PairDrillClient({
           <p className="animate-pulse text-sm text-stone-400 dark:text-stone-600">Your turn…</p>
         ) : null}
 
-        {phase === "answer" ? (
-          <>
-            <div className="w-full border-t border-stone-200 dark:border-stone-800" />
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-stone-400 dark:text-stone-600">Answer</p>
-              <p className="mt-1 text-2xl font-medium text-stone-900 dark:text-stone-50">{pair.answer.amis}</p>
-              <p className="mt-1 text-stone-600 dark:text-stone-300">{pair.answer.zh}</p>
-            </div>
-            <AudioButton url={pair.answer.audioUrl} playing={isPlaying} onPlay={() => play(pair.answer.audioUrl!)} />
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => grade("missed")}
-                className={`flex items-center gap-1 rounded-lg border px-4 py-2 font-medium transition active:scale-95 ${
-                  grades[pair.id] === "missed"
-                    ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40"
-                    : "border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
-                }`}
-              >
-                <X className="h-4 w-4" /> Missed
-              </button>
-              <button
-                type="button"
-                onClick={() => grade("got")}
-                className={`flex items-center gap-1 rounded-lg border px-4 py-2 font-medium transition active:scale-95 ${
-                  grades[pair.id] === "got"
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40"
-                    : "border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
-                }`}
-              >
-                <Check className="h-4 w-4" /> Got it
-              </button>
-            </div>
-          </>
+        <div className="w-full border-t border-stone-200 dark:border-stone-800" />
+        <div>
+          <p className={`text-2xl font-medium text-stone-900 dark:text-stone-50 ${blurUntilRevealed}`}>{pair.answer.amis}</p>
+          <p className={`mt-1 text-stone-600 dark:text-stone-300 ${blurUntilRevealed}`}>{pair.answer.zh}</p>
+        </div>
+        {revealed ? (
+          <AudioButton url={pair.answer.audioUrl} playing={isPlaying} onPlay={() => play(pair.answer.audioUrl!)} />
         ) : null}
       </div>
 
-      {phase === "answer" ? (
+      {revealed ? (
+        <div className="mt-4 flex gap-3">
+          <button
+            type="button"
+            onClick={() => grade("missed")}
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-4 py-3 font-medium transition active:scale-95 ${
+              grades[pair.id] === "missed"
+                ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40"
+                : "border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
+            }`}
+          >
+            <X className="h-4 w-4" /> Missed
+          </button>
+          <button
+            type="button"
+            onClick={() => grade("got")}
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-4 py-3 font-medium transition active:scale-95 ${
+              grades[pair.id] === "got"
+                ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40"
+                : "border-stone-300 text-stone-700 dark:border-stone-700 dark:text-stone-300"
+            }`}
+          >
+            <Check className="h-4 w-4" /> Got it
+          </button>
+        </div>
+      ) : null}
+
+      {revealed ? (
         <button
           type="button"
           onClick={advance}
           className="mt-4 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
         >
-          {index === pairs.length - 1 ? "Finish" : "Next pair"}
+          {index === pairs.length - 1 ? "Finish" : "Next"}
         </button>
       ) : null}
     </div>
