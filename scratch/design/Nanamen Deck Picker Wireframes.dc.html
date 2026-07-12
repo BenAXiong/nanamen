@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#f3efe7;font-family:'Kalam',cursive;color:#1a1a1a}
+  .dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.1);scroll-margin-top:16px}
+  .dv-thd{display:flex;align-items:baseline;gap:12px;margin:0 0 24px}
+  .dv-tid{font:700 12px 'Kalam',cursive;padding:4px 9px;background:#1a1a1a;color:#fff;border-radius:5px;text-decoration:none}
+  .dv-tname{font:700 18px 'Kalam',cursive;color:#1a1a1a}
+  .dv-opts{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}
+  .dv-opt{flex:none;display:flex;flex-direction:column;gap:12px;scroll-margin-top:16px}
+  .dv-oid{font:700 13px 'Kalam',cursive;padding:4px 9px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:6px;text-decoration:none}
+  .dv-olabel{display:flex;align-items:baseline;gap:10px;font:400 15px/1.3 'Kalam',cursive;color:rgba(0,0,0,.6)}
+  .dv-card{display:flex;gap:22px;align-items:flex-start}
+  .dv-opt:target .dv-oid{background:#2D7FF9;color:#fff}
+  .dv-next{margin:26px 0 0;font:400 15px/1.6 'Kalam',cursive;color:rgba(0,0,0,.55)}
+  .phone{width:270px;flex:none;border:3px solid #1a1a1a;border-radius:30px;background:#fff;
+    box-shadow:5px 5px 0 rgba(0,0,0,.08);padding:14px 12px 10px;display:flex;flex-direction:column;
+    gap:8px;position:relative}
+  .phone-cap{text-align:center;font:400 13px 'Kalam',cursive;color:rgba(0,0,0,.5);margin-bottom:6px}
+  .ptitle{font:700 21px 'Kalam',cursive;margin:2px 0 6px}
+  .dash{border:1.5px dashed #bbb;border-radius:8px}
+  .chip{border:2px solid #1a1a1a;border-radius:999px;padding:4px 12px;font:400 13px 'Kalam',cursive;display:inline-flex;align-items:center;gap:5px}
+  .chip.on{background:#2D7FF9;color:#fff;border-color:#2D7FF9}
+  .cb{width:16px;height:16px;border:2px solid #1a1a1a;border-radius:4px;flex:none;display:inline-flex;align-items:center;justify-content:center}
+  .cb.on{background:#2D7FF9;border-color:#2D7FF9;color:#fff;font:700 11px monospace}
+  .dot{width:8px;height:8px;border-radius:50%;background:#d97b3f;flex:none}
+  .cta{background:#2D7FF9;color:#fff;font:700 15px 'Kalam',cursive;text-align:center;border-radius:10px;padding:11px 8px;line-height:1.25}
+  .sub{font:400 12px 'Kalam',cursive;color:rgba(0,0,0,.5);text-align:center}
+  .tabbar{margin-top:auto;display:flex;justify-content:space-around;border-top:2px dashed #ccc;padding-top:8px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;font:400 11px 'Kalam',cursive;color:rgba(0,0,0,.45)}
+  .tab.active{color:#2D7FF9;font-weight:700}
+  .tabdot{width:16px;height:16px;border:2px solid currentColor;border-radius:5px}
+  .row{display:flex;align-items:center;gap:8px}
+  .lesson-row{display:flex;align-items:center;gap:8px;font:400 13px 'Kalam',cursive;padding:6px 2px;border-bottom:1px solid #eee}
+  .sect-row{display:flex;align-items:center;gap:8px;font:400 12px 'Kalam',cursive;color:rgba(0,0,0,.6);padding:4px 0 4px 22px}
+  .callout{position:absolute;font:400 13px 'Kalam',cursive;color:#d97b3f;max-width:150px;line-height:1.3}
+  .anno{font:400 13px 'Kalam',cursive;color:rgba(0,0,0,.55);max-width:270px;margin-top:2px}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t2">
+  <div class="dv-thd">
+    <a class="dv-tid" href="#t2">2</a>
+    <span class="dv-tname">Riffs on <a class="dv-oid" href="#1b">1b</a> — content-first, no modal, header controls</span>
+  </div>
+  <div class="dv-opts">
+
+    <!-- OPTION 2A: EXPANDABLE LESSON ROWS -->
+    <div class="dv-opt" id="2a">
+      <div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Expandable lesson rows, toggle switches</div>
+      <div class="dv-card">
+        <div>
+          <div class="phone-cap">Exposure tab — content shown immediately</div>
+          <div class="phone" style="height:580px">
+            <div class="row" style="justify-content:space-between">
+              <span style="font:700 19px 'Kalam',cursive">Nanamen!</span>
+              <span class="row" style="gap:8px">
+                <span style="font:12px 'Kalam',cursive;text-decoration:underline">All / none</span>
+                <span style="width:30px;height:18px;border:2px solid #1a1a1a;border-radius:999px;position:relative;background:#2D7FF9">
+                  <span style="position:absolute;right:1px;top:1px;width:12px;height:12px;background:#fff;border-radius:50%"></span>
+                </span>
+              </span>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:2px;margin-top:6px">
+              <div class="lesson-row" style="align-items:flex-start;flex-direction:column;gap:4px;padding:8px 2px">
+                <div class="row" style="width:100%;justify-content:space-between">
+                  <span style="font:700 13px 'Kalam',cursive">▾ Lesson 12: Market Day<span class="dot" style="display:inline-block;margin-left:6px;vertical-align:middle"></span></span>
+                  <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+                </div>
+                <div class="row" style="flex-wrap:wrap;gap:5px;padding-left:14px">
+                  <span class="chip on" style="font-size:11px;padding:3px 8px">Sec 1</span><span class="chip on" style="font-size:11px;padding:3px 8px">Sec 2</span><span class="chip" style="font-size:11px;padding:3px 8px">Sec 3</span><span class="chip on" style="font-size:11px;padding:3px 8px">Sec 4</span><span class="chip" style="font-size:11px;padding:3px 8px">Sec 5</span><span class="chip on" style="font-size:11px;padding:3px 8px">Sec 6</span>
+                </div>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between">
+                <span style="font:13px 'Kalam',cursive">▸ Lesson 11: Family Visit</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;position:relative"></span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between">
+                <span style="font:13px 'Kalam',cursive">▸ Lesson 10: Weather</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;position:relative"></span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between">
+                <span style="font:13px 'Kalam',cursive">▸ Lesson 9: At the Market</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;position:relative"></span>
+              </div>
+              <div style="text-align:center;font:12px 'Kalam',cursive;color:rgba(0,0,0,.4);padding:6px">⋯ scroll for 8 more lessons ⋯</div>
+            </div>
+            <div class="cta">Start reviewing (2 lessons)</div>
+            <div class="tabbar">
+              <div class="tab"><div class="tabdot"></div>Lessons</div>
+              <div class="tab active"><div class="tabdot"></div>Exposure</div>
+              <div class="tab"><div class="tabdot"></div>Automation</div>
+              <div class="tab"><div class="tabdot"></div>Strengthen</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anno">Only one lesson expanded at a time (accordion) keeps 10+ lessons scannable — collapsed rows show just a lesson-level toggle. Shuffle icon replaces the old order-toggle row, top-right, filled blue = on. "All/none" is a text link next to it. No checkboxes anywhere — lesson switch = whole lesson, chips = sections, both toggle-style.</div>
+    </div>
+
+    <!-- OPTION 2B: FLAT LIST, SECTION DOTS, MASTER TOGGLE -->
+    <div class="dv-opt" id="2b">
+      <div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Flat scroll list, compact section dots</div>
+      <div class="dv-card">
+        <div>
+          <div class="phone-cap">Exposure tab — content shown immediately</div>
+          <div class="phone" style="height:580px">
+            <div class="row" style="justify-content:space-between">
+              <span style="font:700 19px 'Kalam',cursive">Nanamen!</span>
+              <span style="width:30px;height:18px;border:2px solid #1a1a1a;border-radius:999px;position:relative">
+                <span style="position:absolute;left:1px;top:1px;width:12px;height:12px;background:#1a1a1a;border-radius:50%"></span>
+              </span>
+            </div>
+            <div class="row" style="justify-content:space-between;padding:4px 0 2px;border-bottom:1.5px dashed #ddd">
+              <span style="font:12px 'Kalam',cursive;text-decoration:underline">Select all</span>
+              <span style="font:11px 'Kalam',cursive;color:rgba(0,0,0,.4)">tap dots to pick sections</span>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:0;margin-top:2px">
+              <div class="lesson-row" style="justify-content:space-between">
+                <span style="font:13px 'Kalam',cursive">Lesson 12: Market Day</span>
+                <span class="row" style="gap:3px">
+                  <span style="width:9px;height:9px;border-radius:50%;background:#2D7FF9"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#2D7FF9"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#2D7FF9"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                </span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between">
+                <span style="font:13px 'Kalam',cursive">Lesson 11: Family Visit<span class="dot" style="display:inline-block;margin-left:5px;vertical-align:middle"></span></span>
+                <span class="row" style="gap:3px">
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                </span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between">
+                <span style="font:13px 'Kalam',cursive">Lesson 10: Weather</span>
+                <span class="row" style="gap:3px">
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                </span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between">
+                <span style="font:13px 'Kalam',cursive">Lesson 9: At the Market</span>
+                <span class="row" style="gap:3px">
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                </span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between">
+                <span style="font:13px 'Kalam',cursive">Lesson 8: Directions</span>
+                <span class="row" style="gap:3px">
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                  <span style="width:9px;height:9px;border-radius:50%;background:#ccc"></span>
+                </span>
+              </div>
+              <div style="text-align:center;font:12px 'Kalam',cursive;color:rgba(0,0,0,.4);padding:4px">⋯ scroll for 7 more ⋯</div>
+            </div>
+            <div class="cta">Start reviewing (2 lessons, 3 sections)</div>
+            <div class="tabbar">
+              <div class="tab"><div class="tabdot"></div>Lessons</div>
+              <div class="tab active"><div class="tabdot"></div>Exposure</div>
+              <div class="tab"><div class="tabdot"></div>Automation</div>
+              <div class="tab"><div class="tabdot"></div>Strengthen</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anno">No expand/collapse at all — every lesson's sections are always visible as a compact row of dots (blue = selected), so the whole catalog scrolls as one flat list even at 10+ lessons. Trades some density for zero interaction cost. Shuffle toggle in header shown off (grey, thumb left).</div>
+    </div>
+
+    <!-- OPTION 2C: HORIZONTAL LESSON RAIL + SECTION PANEL -->
+    <div class="dv-opt" id="2c">
+      <div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Horizontal lesson rail, section panel below</div>
+      <div class="dv-card">
+        <div>
+          <div class="phone-cap">Exposure tab — content shown immediately</div>
+          <div class="phone" style="height:580px">
+            <div class="row" style="justify-content:space-between">
+              <span style="font:700 19px 'Kalam',cursive">Nanamen!</span>
+              <span class="row" style="gap:8px">
+                <span style="font:12px 'Kalam',cursive;text-decoration:underline">all/none</span>
+                <span style="width:30px;height:18px;border:2px solid #1a1a1a;border-radius:999px;position:relative;background:#2D7FF9">
+                  <span style="position:absolute;right:1px;top:1px;width:12px;height:12px;background:#fff;border-radius:50%"></span>
+                </span>
+              </span>
+            </div>
+            <div class="row" style="gap:8px;overflow:hidden;margin-top:6px;padding-bottom:6px">
+              <div style="flex:none;width:76px;height:64px;border-radius:10px;border:3px solid #2D7FF9;background:#eaf2ff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11px 'Kalam',cursive;position:relative">L12<span class="dot" style="position:absolute;top:4px;right:4px"></span></div>
+              <div style="flex:none;width:76px;height:64px;border-radius:10px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;font:11px 'Kalam',cursive;color:rgba(0,0,0,.5)">L11</div>
+              <div style="flex:none;width:76px;height:64px;border-radius:10px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;font:11px 'Kalam',cursive;color:rgba(0,0,0,.5)">L10</div>
+              <div style="flex:none;width:76px;height:64px;border-radius:10px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font:11px 'Kalam',cursive;color:rgba(0,0,0,.35)">+8 →</div>
+            </div>
+            <div style="font:700 13px 'Kalam',cursive;margin-top:4px">Lesson 12: Market Day</div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:6px;margin-top:4px">
+              <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+                <span style="font:13px 'Kalam',cursive">Sec 1 — Greetings</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+                <span style="font:13px 'Kalam',cursive">Sec 2 — Prices</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+                <span style="font:13px 'Kalam',cursive">Sec 3 — Bargaining</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;position:relative"></span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+                <span style="font:13px 'Kalam',cursive">Sec 4 — Goodbyes</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+              </div>
+            </div>
+            <div class="cta">Start reviewing (3 sections)</div>
+            <div class="tabbar">
+              <div class="tab"><div class="tabdot"></div>Lessons</div>
+              <div class="tab active"><div class="tabdot"></div>Exposure</div>
+              <div class="tab"><div class="tabdot"></div>Automation</div>
+              <div class="tab"><div class="tabdot"></div>Strengthen</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anno">Lessons become a horizontal rail (card per lesson, blue = has selections) so 10+ lessons never eat vertical space — tap a card to swap the section list below it. Best when a session usually draws from one or two lessons; worse if someone wants to eyeball everything at once (see 2b for that case).</div>
+    </div>
+
+    <!-- OPTION 2D: 2C MODIFIED -->
+    <div class="dv-opt" id="2d">
+      <div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a>2c, revised — lesson-level toggle, 全部/清楚, shuffle icon, no dots</div>
+      <div class="dv-card">
+        <div>
+          <div class="phone-cap">Exposure tab — content shown immediately</div>
+          <div class="phone" style="height:580px">
+            <div class="row" style="justify-content:space-between">
+              <span style="font:700 19px 'Kalam',cursive">Nanamen!</span>
+              <span class="row" style="gap:6px">
+                <span style="border:2px solid #1a1a1a;border-radius:8px;padding:3px 8px;font:700 13px 'Kalam',cursive">全部</span>
+                <span style="border:2px solid #1a1a1a;border-radius:8px;padding:3px 8px;font:700 13px 'Kalam',cursive">清楚</span>
+                <span style="width:28px;height:28px;border:2px solid #1a1a1a;border-radius:8px;background:#2D7FF9;display:flex;align-items:center;justify-content:center;font:14px 'Kalam',cursive;color:#fff">⇄</span>
+              </span>
+            </div>
+            <div class="row" style="gap:8px;overflow:hidden;margin-top:8px;padding-bottom:6px">
+              <div style="flex:none;width:76px;height:64px;border-radius:10px;border:3px solid #2D7FF9;background:#eaf2ff;display:flex;align-items:center;justify-content:center;font:700 22px 'Kalam',cursive">L12</div>
+              <div style="flex:none;width:76px;height:64px;border-radius:10px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;font:700 22px 'Kalam',cursive;color:rgba(0,0,0,.5)">L11</div>
+              <div style="flex:none;width:76px;height:64px;border-radius:10px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;font:700 22px 'Kalam',cursive;color:rgba(0,0,0,.5)">L10</div>
+              <div style="flex:none;width:76px;height:64px;border-radius:10px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font:11px 'Kalam',cursive;color:rgba(0,0,0,.35)">+8 →</div>
+            </div>
+            <div class="row" style="justify-content:space-between;margin-top:4px">
+              <span style="font:700 14px 'Kalam',cursive">Lesson 12: Market Day</span>
+              <span style="width:30px;height:18px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative;flex:none"><span style="position:absolute;right:1px;top:1px;width:12px;height:12px;background:#fff;border-radius:50%"></span></span>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:6px;margin-top:6px">
+              <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+                <span style="font:13px 'Kalam',cursive">Sec 1 — Greetings</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+                <span style="font:13px 'Kalam',cursive">Sec 2 — Prices</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+                <span style="font:13px 'Kalam',cursive">Sec 3 — Bargaining</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;position:relative"></span>
+              </div>
+              <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+                <span style="font:13px 'Kalam',cursive">Sec 4 — Goodbyes</span>
+                <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+              </div>
+            </div>
+            <div class="cta">Start reviewing (3 sections)</div>
+            <div class="tabbar">
+              <div class="tab"><div class="tabdot"></div>Lessons</div>
+              <div class="tab active"><div class="tabdot"></div>Exposure</div>
+              <div class="tab"><div class="tabdot"></div>Automation</div>
+              <div class="tab"><div class="tabdot"></div>Strengthen</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anno">Lesson labels ("L12") now large/bold on the rail cards. The lesson-title row gets its own toggle — flip it to include/exclude the whole lesson without opening its sections. 全部 / 清楚 replace the all/none link as two explicit buttons. Shuffle is its own icon toggle (⇄, blue when on) separate from those buttons. Weak-item dots removed per request — that state isn't surfaced here at all now.</div>
+    </div>
+
+  </div>
+  <p class="dv-next">On dashed boxes: in 1a/1b/1c a dashed border marked "this is a rough placeholder region, not a real container" — a wireframing convention, not a UI element. Removed here since the layout is more decided. Try next: "make <a class="dv-oid" href="#2a">2a</a> the Automation tab version (pairs only, show an empty deck)" · "combine <a class="dv-oid" href="#2a">2a</a>'s accordion with <a class="dv-oid" href="#2c">2c</a>'s rail" · "now do Lessons + Strengthen tabs"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd">
+    <a class="dv-tid" href="#t1">1</a>
+    <span class="dv-tname">Deck picker — 3 directions (shared component, Exposure shown; Automation looks identical, swap wording to "pairs")</span>
+  </div>
+  <div class="dv-opts">
+
+    <!-- OPTION 1A: MODAL/SHEET -->
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Bottom sheet modal</div>
+      <div class="dv-card">
+        <div>
+          <div class="phone-cap">Default state</div>
+          <div class="phone" style="height:560px">
+            <div class="ptitle">Exposure</div>
+            <div class="dash" style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;padding:20px">
+              <div class="cta" style="width:100%">Start reviewing<br>"Market Day" — all sections</div>
+              <div class="sub" style="text-decoration:underline">Choose different decks ▾</div>
+            </div>
+            <div class="tabbar">
+              <div class="tab"><div class="tabdot"></div>Lessons</div>
+              <div class="tab active"><div class="tabdot"></div>Exposure</div>
+              <div class="tab"><div class="tabdot"></div>Automation</div>
+              <div class="tab"><div class="tabdot"></div>Strengthen</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="phone-cap">Sheet open (tapped "choose decks")</div>
+          <div class="phone" style="height:560px">
+            <div class="ptitle" style="opacity:.3">Exposure</div>
+            <div style="position:absolute;left:12px;right:12px;bottom:10px;top:170px;background:#fff;border:3px solid #1a1a1a;border-radius:18px 18px 0 0;box-shadow:0 -3px 0 rgba(0,0,0,.06);display:flex;flex-direction:column;padding:10px 12px;gap:6px">
+              <div style="width:36px;height:4px;background:#ccc;border-radius:2px;margin:0 auto 4px"></div>
+              <div style="font:700 14px 'Kalam',cursive">Select decks</div>
+              <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+                <div class="lesson-row"><span class="cb on">✓</span>Lesson 12: Market Day<span class="dot" style="margin-left:auto"></span></div>
+                <div class="sect-row"><span class="cb on">✓</span>Sec 1 — Greetings</div>
+                <div class="sect-row"><span class="cb on">✓</span>Sec 2 — Prices</div>
+                <div class="lesson-row"><span class="cb"></span>Lesson 11: Family Visit</div>
+                <div class="lesson-row"><span class="cb"></span>Lesson 10: Weather</div>
+              </div>
+              <div class="row" style="justify-content:space-between;padding:6px 0;border-top:1.5px dashed #ddd">
+                <span style="font:12px 'Kalam',cursive">Order</span>
+                <span class="row" style="gap:4px">
+                  <span class="chip on" style="padding:3px 9px;font-size:11px">Sequential</span>
+                  <span class="chip" style="padding:3px 9px;font-size:11px">Shuffle</span>
+                </span>
+              </div>
+              <div class="cta">Start reviewing (2 decks)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anno">Full-screen sheet slides up over the tab. Lessons expand inline to reveal sections. Small orange dot = lesson contains weak items. Sheet keeps the tab bar hidden — focused, modal task.</div>
+    </div>
+
+    <!-- OPTION 1B: INLINE ACCORDION + CHIPS -->
+    <div class="dv-opt" id="1b">
+      <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Inline accordion, chip decks</div>
+      <div class="dv-card">
+        <div>
+          <div class="phone-cap">Default state</div>
+          <div class="phone" style="height:560px">
+            <div class="ptitle">Exposure</div>
+            <div class="dash" style="padding:16px;display:flex;flex-direction:column;gap:8px">
+              <div class="cta">Start reviewing<br>"Market Day" — all sections</div>
+              <div class="sub">▸ choose different decks</div>
+            </div>
+            <div style="flex:1"></div>
+            <div class="tabbar">
+              <div class="tab"><div class="tabdot"></div>Lessons</div>
+              <div class="tab active"><div class="tabdot"></div>Exposure</div>
+              <div class="tab"><div class="tabdot"></div>Automation</div>
+              <div class="tab"><div class="tabdot"></div>Strengthen</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="phone-cap">Accordion expanded (page grows, scrolls)</div>
+          <div class="phone" style="height:560px">
+            <div class="ptitle">Exposure</div>
+            <div class="dash" style="padding:12px;display:flex;flex-direction:column;gap:10px;flex:1;overflow:hidden">
+              <div class="cta" style="font-size:13px">Start reviewing (3 selected)</div>
+              <div class="sub" style="text-decoration:underline">▾ choosing decks</div>
+              <div style="font:700 13px 'Kalam',cursive;margin-top:2px">Lesson 12: Market Day</div>
+              <div class="row" style="flex-wrap:wrap;gap:6px">
+                <span class="chip on">Sec 1</span><span class="chip on">Sec 2</span><span class="chip">Sec 3</span>
+              </div>
+              <div class="row" style="gap:6px;font:12px 'Kalam',cursive"><span class="dot"></span>Lesson 11: Family Visit</div>
+              <div class="row" style="flex-wrap:wrap;gap:6px">
+                <span class="chip on">Sec 1</span><span class="chip">Sec 2</span>
+              </div>
+              <div style="font:700 13px 'Kalam',cursive;margin-top:2px">Lesson 10: Weather</div>
+              <div class="row" style="flex-wrap:wrap;gap:6px"><span class="chip">Sec 1</span></div>
+              <div class="row" style="justify-content:space-between;margin-top:auto;padding-top:6px;border-top:1.5px dashed #ddd">
+                <span style="font:12px 'Kalam',cursive">Order</span>
+                <span class="row" style="gap:4px">
+                  <span class="chip" style="padding:3px 9px;font-size:11px">Sequential</span>
+                  <span class="chip on" style="padding:3px 9px;font-size:11px">Shuffle</span>
+                </span>
+              </div>
+            </div>
+            <div class="tabbar">
+              <div class="tab"><div class="tabdot"></div>Lessons</div>
+              <div class="tab active"><div class="tabdot"></div>Exposure</div>
+              <div class="tab"><div class="tabdot"></div>Automation</div>
+              <div class="tab"><div class="tabdot"></div>Strengthen</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anno">No overlay — the CTA area itself unfolds, page scrolls to fit. Sections shown as tappable chips per lesson, no nested checkbox rows. CTA label updates live as chips toggle. Orange dot flags a lesson with weak items instead of a badge count.</div>
+    </div>
+
+    <!-- OPTION 1C: DEDICATED SCREEN -->
+    <div class="dv-opt" id="1c">
+      <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Dedicated picker screen</div>
+      <div class="dv-card">
+        <div>
+          <div class="phone-cap">Default state</div>
+          <div class="phone" style="height:560px">
+            <div class="ptitle">Exposure</div>
+            <div class="dash" style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;padding:20px">
+              <div class="cta" style="width:100%">Start reviewing<br>"Market Day" — all sections</div>
+              <div class="row" style="border:2px solid #1a1a1a;border-radius:10px;padding:8px 14px;font:13px 'Kalam',cursive">Choose different decks →</div>
+            </div>
+            <div class="tabbar">
+              <div class="tab"><div class="tabdot"></div>Lessons</div>
+              <div class="tab active"><div class="tabdot"></div>Exposure</div>
+              <div class="tab"><div class="tabdot"></div>Automation</div>
+              <div class="tab"><div class="tabdot"></div>Strengthen</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="phone-cap">Pushed to "Select decks" screen</div>
+          <div class="phone" style="height:560px">
+            <div class="row" style="gap:8px">
+              <span style="font:700 18px 'Kalam',cursive">←</span>
+              <div class="ptitle" style="margin:0">Select decks</div>
+            </div>
+            <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;padding-top:4px">
+              <div class="lesson-row"><span class="cb on">✓</span>Lesson 12: Market Day<span class="dot" style="margin-left:auto"></span></div>
+              <div class="sect-row"><span class="cb on">✓</span>Sec 1 — Greetings</div>
+              <div class="sect-row"><span class="cb on">✓</span>Sec 2 — Prices</div>
+              <div class="lesson-row"><span class="cb on">✓</span>Lesson 11: Family Visit</div>
+              <div class="sect-row"><span class="cb"></span>Sec 1 — Directions</div>
+              <div class="lesson-row"><span class="cb"></span>Lesson 10: Weather</div>
+            </div>
+            <div class="row" style="justify-content:space-between;padding:8px 0;border-top:1.5px dashed #ddd">
+              <span style="font:12px 'Kalam',cursive">Order</span>
+              <span class="row" style="gap:4px">
+                <span class="chip on" style="padding:3px 9px;font-size:11px">Sequential</span>
+                <span class="chip" style="padding:3px 9px;font-size:11px">Shuffle</span>
+              </span>
+            </div>
+            <div class="cta">Start reviewing (2 decks)</div>
+          </div>
+        </div>
+      </div>
+      <div class="anno">Tapping "choose decks" navigates to its own screen (tab bar gone, back arrow instead) — most room to browse, feels like a real destination rather than an add-on. Same checkbox tree as 1a but full height, no sheet chrome competing for space.</div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "combine <a class="dv-oid" href="#1b">1b</a>'s chip sections with <a class="dv-oid" href="#1c">1c</a>'s full screen" · "show the Automation version of <a class="dv-oid" href="#1a">1a</a> with an empty deck" · "now wireframe the Lessons tab" · "add suspended-item state to <a class="dv-oid" href="#1c">1c</a>"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

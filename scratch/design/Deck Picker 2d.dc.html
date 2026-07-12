@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#f3efe7;font-family:'Kalam',cursive;color:#1a1a1a}
+  .wrap{padding:40px;display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+  .phone-cap{font:400 13px 'Kalam',cursive;color:rgba(0,0,0,.5)}
+  .phone{width:270px;border:3px solid #1a1a1a;border-radius:30px;background:#fff;
+    box-shadow:5px 5px 0 rgba(0,0,0,.08);padding:14px 12px 10px;display:flex;flex-direction:column;
+    gap:8px}
+  .chip{border:2px solid #1a1a1a;border-radius:999px;padding:4px 12px;font:400 13px 'Kalam',cursive;display:inline-flex;align-items:center;gap:5px}
+  .chip.on{background:#2D7FF9;color:#fff;border-color:#2D7FF9}
+  .cta{background:#2D7FF9;color:#fff;font:700 15px 'Kalam',cursive;text-align:center;border-radius:10px;padding:11px 8px;line-height:1.25}
+  .tabbar{margin-top:auto;display:flex;justify-content:space-around;border-top:2px dashed #ccc;padding-top:8px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;font:400 11px 'Kalam',cursive;color:rgba(0,0,0,.45)}
+  .tab.active{color:#2D7FF9;font-weight:700}
+  .tabdot{width:16px;height:16px;border:2px solid currentColor;border-radius:5px}
+  .row{display:flex;align-items:center;gap:8px}
+  .lesson-row{display:flex;align-items:center;gap:8px;font:400 13px 'Kalam',cursive;padding:6px 2px;border-bottom:1px solid #eee}
+  .anno{font:400 15px/1.6 'Kalam',cursive;color:rgba(0,0,0,.6);max-width:420px}
+</style>
+</helmet>
+<div class="wrap">
+  <div style="font:700 18px 'Kalam',cursive">Exposure deck picker — direction 2d</div>
+  <div class="phone-cap">Exposure tab — content shown immediately</div>
+  <div class="phone" style="height:580px">
+    <div class="row" style="justify-content:space-between">
+      <span style="font:700 19px 'Kalam',cursive">Nanamen!</span>
+      <span class="row" style="gap:6px">
+        <span style="border:2px solid #1a1a1a;border-radius:8px;padding:3px 8px;font:700 13px 'Kalam',cursive">全部</span>
+        <span style="border:2px solid #1a1a1a;border-radius:8px;padding:3px 8px;font:700 13px 'Kalam',cursive">清楚</span>
+        <span style="width:28px;height:28px;border:2px solid #1a1a1a;border-radius:8px;background:#2D7FF9;display:flex;align-items:center;justify-content:center;font:14px 'Kalam',cursive;color:#fff">⇄</span>
+      </span>
+    </div>
+    <div class="row" style="gap:8px;overflow:hidden;margin-top:8px;padding-bottom:6px">
+      <div style="flex:none;width:76px;height:64px;border-radius:10px;border:3px solid #2D7FF9;background:#eaf2ff;display:flex;align-items:center;justify-content:center;font:700 22px 'Kalam',cursive">L12</div>
+      <div style="flex:none;width:76px;height:64px;border-radius:10px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;font:700 22px 'Kalam',cursive;color:rgba(0,0,0,.5)">L11</div>
+      <div style="flex:none;width:76px;height:64px;border-radius:10px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;font:700 22px 'Kalam',cursive;color:rgba(0,0,0,.5)">L10</div>
+      <div style="flex:none;width:76px;height:64px;border-radius:10px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font:11px 'Kalam',cursive;color:rgba(0,0,0,.35)">+8 →</div>
+    </div>
+    <div class="row" style="justify-content:space-between;margin-top:4px">
+      <span style="font:700 14px 'Kalam',cursive">Lesson 12: Market Day</span>
+      <span style="width:30px;height:18px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative;flex:none"><span style="position:absolute;right:1px;top:1px;width:12px;height:12px;background:#fff;border-radius:50%"></span></span>
+    </div>
+    <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:6px;margin-top:6px">
+      <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+        <span style="font:13px 'Kalam',cursive">Sec 1 — Greetings</span>
+        <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+      </div>
+      <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+        <span style="font:13px 'Kalam',cursive">Sec 2 — Prices</span>
+        <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+      </div>
+      <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+        <span style="font:13px 'Kalam',cursive">Sec 3 — Bargaining</span>
+        <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;position:relative"></span>
+      </div>
+      <div class="lesson-row" style="justify-content:space-between;padding-left:0">
+        <span style="font:13px 'Kalam',cursive">Sec 4 — Goodbyes</span>
+        <span style="width:26px;height:16px;border:2px solid #1a1a1a;border-radius:999px;background:#2D7FF9;position:relative"><span style="position:absolute;right:1px;top:1px;width:10px;height:10px;background:#fff;border-radius:50%"></span></span>
+      </div>
+    </div>
+    <div class="cta">Start reviewing (3 sections)</div>
+    <div class="tabbar">
+      <div class="tab"><div class="tabdot"></div>Lessons</div>
+      <div class="tab active"><div class="tabdot"></div>Exposure</div>
+      <div class="tab"><div class="tabdot"></div>Automation</div>
+      <div class="tab"><div class="tabdot"></div>Strengthen</div>
+    </div>
+  </div>
+  <div class="anno">Horizontal lesson rail (large "L12" labels) + section list for the selected lesson. Lesson-title row has its own include/exclude toggle, separate from the per-section toggles below it. Header: 全部 (select all) / 清楚 (clear) buttons, plus a standalone shuffle icon toggle (⇄, blue = on). No weak-item indicators in this variant. Sticky "Start reviewing" CTA at the bottom; tab order is Lessons, Exposure, Automation, Strengthen.</div>
+</div>
+
+</x-dc>
+</body>
+</html>

@@ -45,6 +45,9 @@ yarn-error.log*
 /scratch/*
 !/scratch/README.md
 !/scratch/*-manual-config.json
+!/scratch/plan.md
+!/scratch/design/
+!/scratch/design/*.html
 
 # next-pwa generated service worker
 /public/sw.js
