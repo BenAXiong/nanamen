@@ -1,5 +1,11 @@
 # Nav redesign implementation — Deck Picker (direction 2d)
 
+**Status: SHIPPED.** This spec is now historical -- see `scratch/plan.md`'s
+"Nav redesign -- DONE" backlog entry for what actually landed and where it
+diverged (Strengthen is a header filter chip labeled 加强(N), not a
+bottom-row button; suspend is per-sentence not per-pair; Automation's
+reveal is a 3-phase auto flow, no manual "Reveal answer" button).
+
 Supersedes the 4-bottom-tab IA from `nav-redesign-brief.md` with a single
 home screen. Visual reference: `scratch/design/Deck Picker 2d.dc.html`
 (the only CD direction being built — the other options in

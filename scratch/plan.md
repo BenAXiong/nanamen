@@ -25,49 +25,43 @@ Reference precedent checked: YCM_Citadel's `portal` app has a reusable audio-pla
 - `scratch/lesson-1-manual-config.json` (tracked in git, real editable data, not a "seed" file) holds `classDate` and a flat `sections` map of section name → Order number(s) (single number or array) from `lesson-1-airtable-import.csv`. Ben edits it, then asks Claude to apply it to Airtable directly. Currently only the first entry per section is assigned (1-6); the remaining 50 sentences have a blank Section for Ben to assign via this file over time. Convention documented in `scratch/README.md` for future lessons.
 - `scripts/convert-airtable-import.mjs` (generic plain-text → Airtable CSV, the CLI form of the `/conv` backlog idea) and `scripts/build-rekad1-import.mjs` (SashaWaves API → same CSV shape) both live under `npm run content:airtable-import` / `content:rekad1-import`, writing into the gitignored `scratch/` staging area.
 
-## Routes (App Router)
-**Status: this section describes the current, live IA. A navigation redesign is
-planned (not yet implemented) — see `scratch/nav-redesign-brief.md` in the
-repo: 4 bottom tabs (Lessons / Exposure / Automation [renamed Fluency] /
-Strengthen [renamed Practice weak]), each review-mode tab getting its own
-"Start reviewing" CTA (defaults to the most recent lesson) plus a
-select/expand-decks picker for cross-lesson review. That brief is the source
-of truth for the next redesign step (wireframes via Claude Design, then
-implementation) — this Routes section stays accurate for what's deployed
-today until that lands.**
+## Routes (App Router) -- superseded by the nav redesign, see below
+**Status: the 4-route drill-down IA described here was replaced by a single
+unified home screen. Kept below only as history of what "before" looked
+like; do not build against it. Current shape is documented under
+"Nav redesign -- DONE" in the Backlog section.**
 
-Lang/dialect layer is data-only (not a UI picker) since only amis/malan exists — jump straight to lessons.
+Lang/dialect layer was data-only (not a UI picker) since only amis/malan exists.
 
-- `/` — lesson list (3 lessons, cards showing title + section count) + a "Practice weak items" entry point (global by default, filterable to one Lesson)
-- `/l/[lesson]` — section grid (6 sections), each linking to its exposure/fluency/list screens
+- `/` — lesson list (3 lessons) + a "Practice weak items" entry point
+- `/l/[lesson]` — section grid, each linking to its exposure/fluency/list screens
 - `/l/[lesson]/[section]/exposure` — Exposure mode player
 - `/l/[lesson]/[section]/fluency` — Fluency mode drill
-- `/l/[lesson]/[section]/list` — sentence list: every sentence/pair in the section, with a suspend/unsuspend toggle per item (suspended shown greyed-out, not hidden)
-- `/practice-weak` — Practice weak items drill (same UI as Fluency, but sourced from the weak-items pool instead of one section's pairs; optional `?lesson=` scope)
+- `/l/[lesson]/[section]/list` — sentence list with per-item suspend
+- `/practice-weak` — Practice weak items drill, optional `?lesson=` scope
 
-## Exposure mode
-- Sequential through the section's sentences, including untagged (exposure-only) ones and both halves of any pair (shuffle toggle optional, off by default)
-- Card: Amis text as the prompt; tap/click reveals Zh translation. Audio auto-plays on card show, with a replay button (hidden if no audio file, not disabled)
-- Prev/Next controls, "n / N" progress indicator, no grading, no timer, no persisted state
-- Suspended sentences are skipped
+## Exposure mode ("Review")
+- Launched from the home screen's "Review" CTA, over whatever lessons/sections are currently ticked in the deck picker (see Backlog) — no longer scoped to one section at a time.
+- Card: Amis (large) and Zh (smaller) each start **blurred and reveal independently on their own tap** — not a single whole-card tap, and not "Amis always visible, only Zh gated." Audio auto-plays on card show.
+- Card is vertically centered in the available space (`components/ExposureClient.tsx`, `h-[38vh]`); Prev/Next buttons pinned at the bottom.
+- On the last card, the "Next" button becomes "Home" and returns to the picker instead of just disabling.
+- No grading, no timer, no persisted state. Suspended sentences are excluded before the session starts.
 
-## Fluency mode (question/answer real-time drill)
-Only sentences with a `Pair Tag` participate — pulled as `Qx`/`Ax` pairs, one section at a time. Suspended pairs are excluded.
+## Automation mode ("Test") -- question/answer real-time drill
+Only sentences with a `Pair Tag` participate, pulled as `Qx`/`Ax` pairs across whatever's ticked in the picker (or the weak pool, in Strengthen mode — see below). Suspended pairs (either half individually suspended) are excluded.
 
-Per-pair flow:
-1. `Qx` auto-plays audio on display. User can replay it freely (untimed) — no forced advancement.
-2. User taps "Reveal" when ready → an auto-computed silence gap plays (duration = `Ax` audio length, 2-second floor; if `Ax` has no audio, just use the floor) — this is the real-time answer window.
-3. `Ax` auto-plays/reveals (text + audio).
-4. User self-grades **Got it / Missed**. This grade updates the pair's weak-item state (see below) and the session's running tally.
+Per-pair flow, `components/PairDrillClient.tsx`:
+1. **question phase**: `Qx` audio autoplays. Its Amis/Zh each blur-and-reveal independently on tap, same interaction as Exposure, available the whole time regardless of phase. The answer's Amis/Zh/audio button are already mounted (blurred / invisible) so nothing jiggles later, but aren't tappable yet.
+2. Once the question audio's `onended` fires (not in parallel with it — a real timing bug from an earlier round), the drill moves to **gap phase**: a "Answer…" overlay covers just the answer area for `max(Ax duration, 2s floor) + 1s`.
+3. Timer elapses → **answer phase**: overlay drops, the answer's Amis/Zh unblur automatically (no extra tap needed), and the question's Amis/Zh unblur too regardless of their own tap state. The answer's audio does **not** autoplay — tap it like any other audio button.
+4. Missed/Got it appear below the card (permanently red/green, not just when selected). **Next/Finish is disabled until the pair is actually graded.**
 
-Between pairs: nothing auto-plays. The next `Qx` sits ready; user taps play when they choose to advance (so they can re-run the just-finished pair a few more times first if they want).
-
-End of section: summary screen with session tally (Got it / Missed counts) and a Restart button.
+End of session: summary screen with tally (Got it / Missed counts) and a **Retest** button (renamed from Restart).
 
 ## Weak items & Suspend (localStorage)
-- **Weak-item pool**: keyed by pair id (`lesson-slug/section-slug/Qn`, globally unique since the number alone resets per section). A pair enters the pool on a "Missed" grade, is removed after 3 consecutive "Got it" grades, or can be manually dismissed from the weak-items view. Grading during either a normal Fluency run or a Practice-weak-items run updates this state identically.
-- **Suspend**: pair-unit (suspending either half suspends both) — or, for untagged sentences, suspends that single sentence. Permanent until manually reversed. Triggerable inline during Exposure/Fluency review and from the section's sentence list. Suspending a pair also removes it from the weak-items pool if present.
-- Both live in a single localStorage blob (e.g. `nanamen-state`), no accounts, no cross-device sync — per [DEC-AUTO01](../../../Documents/LL/6_ycm/Opal_review/docs/adr/DEC-AUTO01-weak-items-localstorage.md).
+- **Weak-item pool**: keyed by pair id, globally unique. A pair enters the pool on a "Missed" grade, is removed after 3 consecutive "Got it" grades, or can be manually dismissed. Also manually toggleable directly: the expanded sentence list (in the deck picker) has a barbell icon next to the suspend eye icon, left of it, shown only for Q/A sentences — toggling it calls the same gradeMissed/dismissWeak transitions as a real grade would.
+- **Suspend is per-individual-sentence**, not per-pair (changed from the original pair-unit design) — suspending a Q no longer silently suspends its A. A pair counts as suspended for drilling purposes if *either* half is individually suspended (derived at read time in `lib/state.ts`, not stored as a separate flag).
+- Lives in a single localStorage blob (`nanamen-state`), no accounts, no cross-device sync — per [DEC-AUTO01](../../../Documents/LL/6_ycm/Opal_review/docs/adr/DEC-AUTO01-weak-items-localstorage.md).
 
 ## Audio playback
 Reuse the pattern from `YCM_Citadel/portal/app/[language]/learn/page.tsx`: one shared `audioRef`, a `playAudio(url)` helper that pauses/swaps `src`/plays and swallows autoplay-blocked errors, circular button with lucide `Volume2`. Note: mobile browsers often block true autoplay without a prior user gesture — the first audio play in a session may require a tap; subsequent auto-plays within the same interaction chain should work. The Fluency gap timer needs `Ax` audio duration up front — computed once in `scripts/sync-content.mjs` using `music-metadata` (pure JS, no native/ffmpeg dependency, so it works unmodified in Vercel's build environment) and stored as `durationSeconds` on each Sentence in the generated JSON, rather than read at runtime from a preloaded `<audio>` element.
@@ -84,7 +78,7 @@ Single responsive column, `max-w-md mx-auto` centered card on desktop so it does
 - Product name: **Nanamen**
 - GitHub repo: `BenAXiong/nanamen` — DONE
 - Vercel project: `nanamen`, live at `https://nanamen.vercel.app` — DONE (deployed and connected to the GitHub repo, so pushes to `master` also trigger a Vercel build)
-- Mode labels shown in the UI: **Exposure** and **Fluency** — Fluency is being renamed **Automation** as part of the nav redesign (see Routes section above); not yet applied in code.
+- Mode labels shown in the UI: home-screen CTAs are **Review** (Exposure) and **Test** (Automation, the renamed Fluency). The Strengthen filter is the **加强(N)** chip in the header (Chinese, matching 全部/清楚 next to it), not an English "Strengthen" label anywhere in the UI.
 
 ## Deployment -- DONE
 - `git init`, GitHub repo, `vercel link`, initial + production deploys all done.
@@ -100,10 +94,27 @@ No login, no DB/backend beyond the Airtable content read, no cross-device sync, 
 ### Dark/light mode toggle -- DONE
 Built: toggle on the home page header (sun/moon icon), class-based Tailwind v4 dark mode (`@custom-variant dark`), defaults to dark via a blocking pre-paint script, persisted in localStorage (`nanamen-theme`), light mode's primary actions use an Airtable-blue accent (`#2D7FF9`).
 
-### Nav redesign -- IN PROGRESS
-Replacing the 4-tab IA (`nav-redesign-brief.md`) with a single unified
-home screen based on Claude Design direction 2d (deck picker rail).
-Full spec: `scratch/nav-redesign-todo.md`.
+### Nav redesign -- DONE
+Replaced the 4-tab IA (`nav-redesign-brief.md`) with a single unified home
+screen (`components/HomeClient.tsx` + `DeckPicker.tsx`) based on Claude
+Design direction 2d: lesson rail (bare `LX` labels, natural order) + a
+per-lesson section list with independent lesson/section toggles, sections
+expanding inline to `SentenceListClient` (Amis/Zh/audio/suspend/weak-mark)
+instead of a separate route. Review/Test launch as in-page view swaps, not
+navigations. 全部/清楚/加强(N)/shuffle live in the header; 加强 filters the
+whole picker to weak-only content and recolors it purple, disabling Review
+(Automation-only) while Test stays enabled.
+
+Went through several real rounds of bug-fixing after Ben clicked through it
+live (not just build/typecheck) -- worth remembering that pattern for future
+UI work here: `lib/useDeckSelection.ts`'s default-selection initializer only
+ran once, so a deck built from a list that starts empty and populates later
+(the Strengthen deck, before localStorage hydrates) got permanently stuck
+with nothing selected; the Automation gap timer was starting in parallel
+with the question's audio instead of waiting for its `onended`; Strengthen's
+Test count didn't match its own badge because it pulled every pair in a
+matched section instead of just the weak ones. Full original spec (now
+historical, some details superseded by the above): `scratch/nav-redesign-todo.md`.
 
 ### Revamp workflow
 Not yet scoped -- Ben wants to revisit the content-authoring workflow (import/edit/sync loop). Needs a follow-up conversation on what specifically should change.
