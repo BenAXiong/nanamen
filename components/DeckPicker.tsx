@@ -16,7 +16,7 @@ function CompletionBadge({ status }: { status: SectionStatus | "none" }) {
   return (
     <span className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
       <Circle className={`absolute inset-0 h-3.5 w-3.5 ${status === "none" ? NEUTRAL : "text-green-500"}`} />
-      <Check className={`h-2 w-2 ${status === "tested" ? "text-green-500" : NEUTRAL}`} />
+      <Check strokeWidth={3.5} className={`h-2 w-2 ${status === "tested" ? "text-green-500" : NEUTRAL}`} />
     </span>
   );
 }
