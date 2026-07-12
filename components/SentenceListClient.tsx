@@ -25,8 +25,8 @@ export function SentenceListClient({ section }: { section: Section }) {
           >
             <AudioButton url={sentence.audioUrl} playing={isPlaying} onPlay={() => play(sentence.audioUrl!)} size="sm" />
             <div className="min-w-0 flex-1">
-              <div className="truncate font-medium text-stone-900 dark:text-stone-50">{sentence.amis}</div>
-              <div className="truncate text-sm text-stone-500 dark:text-stone-400">{sentence.zh}</div>
+              <div className="font-medium text-stone-900 dark:text-stone-50">{sentence.amis}</div>
+              <div className="text-sm text-stone-500 dark:text-stone-400">{sentence.zh}</div>
             </div>
             <button
               type="button"

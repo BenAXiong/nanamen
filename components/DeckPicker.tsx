@@ -67,19 +67,22 @@ export function DeckPicker({
         {lessons.map((lesson) => {
           const state = deck.lessonState(lesson.slug);
           const isOpen = lesson.slug === openLessonSlug;
+          const enabled = state !== "none";
           return (
             <button
               key={lesson.slug}
               type="button"
               onClick={() => setOpenLessonSlug(lesson.slug)}
-              className={`flex h-16 w-19 shrink-0 flex-col items-center justify-center rounded-xl border-2 text-sm font-semibold transition ${
+              className={`flex h-16 w-19 shrink-0 flex-col items-center justify-center rounded-xl border-2 font-rail text-3xl font-bold transition ${
                 isOpen
                   ? tone === "amber"
                     ? "border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
                     : "border-accent bg-accent/10 text-accent"
-                  : state === "none"
-                    ? "border-stone-200 text-stone-400 dark:border-stone-700 dark:text-stone-500"
-                    : "border-stone-300 text-stone-600 dark:border-stone-600 dark:text-stone-300"
+                  : enabled
+                    ? tone === "amber"
+                      ? "border-amber-500 text-amber-600 dark:text-amber-300"
+                      : "border-accent text-accent"
+                    : "border-stone-200 text-stone-400 dark:border-stone-700 dark:text-stone-500"
               }`}
             >
               {railLabel(lesson.title)}

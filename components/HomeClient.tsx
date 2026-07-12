@@ -155,9 +155,12 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between py-6">
-        <div>
+        <div className="flex items-baseline gap-2">
           <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">Nanamen</h1>
-          <p className="text-sm text-stone-500 dark:text-stone-400">Amis · Malan</p>
+          <div className="text-xs leading-tight text-stone-500 dark:text-stone-400">
+            <div>Amis</div>
+            <div>Malan</div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
