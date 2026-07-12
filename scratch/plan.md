@@ -147,8 +147,17 @@ i.e. one question can link to more than one answer), so this needs a
 real linking model, not just "show Qx then its one Ax," before it's worth
 building.
 
-### Add `/dialogue`
-A new route/mode -- not yet scoped beyond the name.
+### Add `/dialogue` -- DONE (as a content-authoring tool, not a review mode)
+Turned out to mean something different from the original vague "new
+route/mode" stub: it's a hidden authoring tool (`app/dialogue/page.tsx` +
+`components/DialogueBuilder.tsx`, same no-auth/unlinked pattern as
+`/edit`/`/import`), not a new review mode. Pick a lesson, optionally hide
+Zh, uncheck sentences you don't want, "Compose" joins the remaining Amis
+text into an editable textarea (explicit button, never auto-syncs -- warns
+before overwriting a differing draft). Draft persists to localStorage per
+lesson slug; Export downloads `.txt`, Copy hits the clipboard. Actually
+*reviewing* a custom dialogue as a mode is still unscoped, if that's ever
+wanted on top of this.
 
 ## Rekad import (SashaWaves → Airtable automation)
 
