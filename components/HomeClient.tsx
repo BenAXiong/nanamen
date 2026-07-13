@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Shuffle, X } from "lucide-react";
 import { getPairs, type Lesson, type Pair } from "@/lib/content";
 import { useNanamenState, isPairSuspended, isSentenceSuspended } from "@/lib/state";
@@ -134,11 +134,31 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
     setScreen("test");
   };
 
+  // While a session is active, the mobile/browser back gesture should close
+  // it (back to the picker) rather than navigate out of the app entirely --
+  // push a history entry the moment a session starts, and treat a pop of
+  // that entry as "close". closeSession below goes through history.back()
+  // instead of setScreen directly, so an in-app close (the X button, or a
+  // session finishing on its own) consumes the same pushed entry, keeping
+  // one push per session-open matched to exactly one pop per session-close
+  // regardless of which of the two ways it was closed.
+  useEffect(() => {
+    if (screen === "picker") return;
+    window.history.pushState({ nanamenSession: screen }, "");
+    const onPopState = () => setScreen("picker");
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [screen]);
+
+  const closeSession = () => {
+    if (screen !== "picker") window.history.back();
+  };
+
   if (screen === "exposure") {
     return (
       <div className="flex flex-1 flex-col">
-        <BackBar onBack={() => setScreen("picker")} title="Exposure" />
-        <ExposureClient items={sessionItems} onFinish={() => setScreen("picker")} />
+        <BackBar onBack={closeSession} title="Exposure" />
+        <ExposureClient items={sessionItems} onFinish={closeSession} />
       </div>
     );
   }
@@ -146,14 +166,14 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
   if (screen === "test") {
     return (
       <div className="flex flex-1 flex-col">
-        <BackBar onBack={() => setScreen("picker")} title={strengthenMode ? "Strengthen" : "Automation"} />
+        <BackBar onBack={closeSession} title={strengthenMode ? "Strengthen" : "Fluency"} />
         <PairDrillClient
           pairs={sessionPairs}
           emptyMessage={strengthenMode ? "No weak items right now." : "No Q/A pairs to drill in this selection."}
           completeTitle={strengthenMode ? "Nice work" : "Session complete"}
           showContext={strengthenMode || deck.selectedLessonCount > 1}
           allowMarkTested={!strengthenMode}
-          onFinish={() => setScreen("picker")}
+          onFinish={closeSession}
         />
       </div>
     );
