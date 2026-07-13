@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ChevronDown, ChevronRight, Copy, Sparkles, Upload } from "lucide-react";
 import type { Lesson } from "@/lib/content";
 import {
@@ -13,26 +13,54 @@ import { DialoguePracticeOverlay } from "@/components/DialoguePracticeOverlay";
 
 const STORAGE_KEY = "nanamen-dialogue";
 
-function loadDraft(lessonSlug: string): string {
+// Tiny external store over localStorage, read via useSyncExternalStore so
+// SSR/hydration is handled by React itself (getServerSnapshot = {}) instead
+// of the useEffect+setState dance, which a stricter lint rule flags as
+// risking cascading renders -- same pattern as lib/state.ts.
+type DraftMap = Record<string, string>;
+let cachedDrafts: DraftMap = {};
+let initialized = false;
+const listeners = new Set<() => void>();
+
+function readDrafts(): DraftMap {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return "";
-    return (JSON.parse(raw) as Record<string, string>)[lessonSlug] ?? "";
+    return raw ? (JSON.parse(raw) as DraftMap) : {};
   } catch {
-    return "";
+    return {};
   }
 }
 
-function saveDraft(lessonSlug: string, text: string) {
+function ensureInitialized() {
+  if (initialized || typeof window === "undefined") return;
+  cachedDrafts = readDrafts();
+  initialized = true;
+}
+
+function subscribe(listener: () => void) {
+  ensureInitialized();
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot(): DraftMap {
+  ensureInitialized();
+  return cachedDrafts;
+}
+
+function getServerSnapshot(): DraftMap {
+  return {};
+}
+
+function commitDraft(lessonSlug: string, text: string) {
+  cachedDrafts = { ...cachedDrafts, [lessonSlug]: text };
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const all = raw ? (JSON.parse(raw) as Record<string, string>) : {};
-    all[lessonSlug] = text;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDrafts));
   } catch {
     // localStorage can be unavailable (private browsing, quota) -- the
     // draft just won't persist, not worth surfacing an error for.
   }
+  listeners.forEach((listener) => listener());
 }
 
 export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
@@ -56,17 +84,9 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
     setIncluded(new Set(allSentences.map((s) => s.id)));
   }
 
-  const [draft, setDraft] = useState("");
-
-  // Load the persisted draft once we know which lesson we're on (and again
-  // whenever the lesson changes) -- localStorage isn't available during SSR.
-  useEffect(() => {
-    setDraft(loadDraft(lessonSlug));
-  }, [lessonSlug]);
-
-  useEffect(() => {
-    saveDraft(lessonSlug, draft);
-  }, [lessonSlug, draft]);
+  const drafts = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const draft = drafts[lessonSlug] ?? "";
+  const setDraft = (text: string) => commitDraft(lessonSlug, text);
 
   // Revoke the last generated-audio object URL on unmount so it doesn't leak.
   useEffect(() => {

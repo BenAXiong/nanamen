@@ -51,7 +51,10 @@ export function PairDrillClient({
 
   // The question's amis/zh reveal independently on their own tap, any time
   // -- unrelated to the timed answer reveal below. Reset whenever a new
-  // pair comes on screen.
+  // pair comes on screen, along with `phase` -- folded into the same
+  // render-time check rather than a `setPhase("question")` at the top of
+  // the effect below, which a stricter lint rule flags as a synchronous
+  // setState-in-effect risking a cascading render.
   const [qAmisRevealed, setQAmisRevealed] = useState(false);
   const [qZhRevealed, setQZhRevealed] = useState(false);
   const [revealKey, setRevealKey] = useState(pair?.id);
@@ -59,6 +62,7 @@ export function PairDrillClient({
     setRevealKey(pair?.id);
     setQAmisRevealed(false);
     setQZhRevealed(false);
+    setPhase("question");
   }
 
   // Question audio autoplays as soon as a pair is on screen. The gap timer
@@ -69,7 +73,6 @@ export function PairDrillClient({
   // taps to hear it like any other audio button.
   useEffect(() => {
     if (!pair) return;
-    setPhase("question");
 
     const startGap = () => {
       setPhase("gap");
