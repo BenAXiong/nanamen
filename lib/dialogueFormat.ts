@@ -48,14 +48,49 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#39;");
 }
 
-// Standalone HTML doc: inline <style> only (no Tailwind at file-open time),
-// with a prefers-color-scheme media query since a downloaded file has no
-// access to the app's dark-class toggle.
-export function renderDialogueHtml(lines: DialogueLine[], lessonTitle: string): string {
+// Standalone HTML doc: inline <style>/<script> only (no Tailwind, no
+// external audio hosting at file-open time) -- audioClips (data: URIs, keyed
+// by index into `lines`) are baked directly into the file so it stays fully
+// self-contained after download. Bubbles with a clip get an inline <audio>
+// + click-to-play; the header "Play all" button (shown only if at least one
+// clip exists) sequences through them via a tiny inline script.
+export function renderDialogueHtml(
+  lines: DialogueLine[],
+  lessonTitle: string,
+  audioClips?: Record<number, string>,
+): string {
   const title = dialogueTitle(lessonTitle);
+  const hasAudio = !!audioClips && Object.keys(audioClips).length > 0;
+
   const body = lines
-    .map((line) => `    <p class="s${line.speaker}">${escapeHtml(line.text)}</p>`)
+    .map((line, i) => {
+      const clip = audioClips?.[i];
+      const cls = clip ? `s${line.speaker} has-audio` : `s${line.speaker}`;
+      const onClick = clip ? ` onclick="this.querySelector('audio').play()"` : "";
+      const audioTag = clip ? `<audio preload="none" src="${clip}"></audio>` : "";
+      return `    <p class="${cls}"${onClick}>${escapeHtml(line.text)}${audioTag}</p>`;
+    })
     .join("\n");
+
+  const playAllButton = hasAudio
+    ? `  <button type="button" class="play-all" onclick="playAll()">&#9654; Play all</button>\n`
+    : "";
+  const playAllScript = hasAudio
+    ? `<script>
+  function playAll() {
+    var audios = Array.prototype.slice.call(document.querySelectorAll("main audio"));
+    var i = 0;
+    (function playNext() {
+      if (i >= audios.length) return;
+      var a = audios[i++];
+      a.currentTime = 0;
+      a.onended = playNext;
+      a.play();
+    })();
+  }
+</script>
+`
+    : "";
 
   return `<!doctype html>
 <html lang="zh">
@@ -83,6 +118,20 @@ export function renderDialogueHtml(lines: DialogueLine[], lessonTitle: string): 
     font-size: 1.125rem;
     font-weight: 600;
     margin: 0 0 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .play-all {
+    border: none;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: #7c3aed;
+    cursor: pointer;
   }
   p {
     margin: 0;
@@ -94,6 +143,8 @@ export function renderDialogueHtml(lines: DialogueLine[], lessonTitle: string): 
   }
   p.s0 { align-self: flex-start; background: #e7e5e4; color: #1c1917; }
   p.s1 { align-self: flex-end; background: #7c3aed; color: #ffffff; }
+  p.has-audio { cursor: pointer; }
+  p.has-audio:active { opacity: 0.85; }
   @media (prefers-color-scheme: dark) {
     body { background: #0c0a09; color: #fafaf9; }
     p.s0 { background: #44403c; color: #f5f5f4; }
@@ -102,12 +153,89 @@ export function renderDialogueHtml(lines: DialogueLine[], lessonTitle: string): 
 </head>
 <body>
 <main>
-  <h1>${escapeHtml(title)}</h1>
+  <h1>
+    <span>${escapeHtml(title)}</span>
+${playAllButton}  </h1>
 ${body}
 </main>
-</body>
+${playAllScript}</body>
 </html>
 `;
+}
+
+// 16-bit PCM WAV encoder for a decoded AudioBuffer -- no library, just the
+// standard 44-byte RIFF/WAVE header followed by interleaved samples.
+function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const numFrames = buffer.length;
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataSize = numFrames * blockAlign;
+  const arrayBuffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(arrayBuffer);
+
+  const writeString = (offset: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i));
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bytesPerSample * 8, true);
+  writeString(36, "data");
+  view.setUint32(40, dataSize, true);
+
+  const channels = Array.from({ length: numChannels }, (_, c) => buffer.getChannelData(c));
+  let offset = 44;
+  for (let i = 0; i < numFrames; i++) {
+    for (let c = 0; c < numChannels; c++) {
+      const sample = Math.max(-1, Math.min(1, channels[c][i]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += 2;
+    }
+  }
+
+  return new Blob([arrayBuffer], { type: "audio/wav" });
+}
+
+// Decodes each per-line clip (data: URIs from the TTS route) via the Web
+// Audio API and concatenates them into one WAV blob -- works regardless of
+// the source format (decodeAudioData handles it), so no assumption about
+// what the TTS endpoint actually returns. Browser-only -- only ever called
+// from a client-side click handler.
+export async function concatenateAudioClips(dataUris: string[]): Promise<Blob> {
+  const AudioContextCtor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  const ctx = new AudioContextCtor();
+  try {
+    const buffers = await Promise.all(
+      dataUris.map(async (uri) => ctx.decodeAudioData(await (await fetch(uri)).arrayBuffer())),
+    );
+    const numChannels = Math.max(...buffers.map((b) => b.numberOfChannels));
+    const sampleRate = buffers[0]?.sampleRate ?? ctx.sampleRate;
+    const gapFrames = Math.round(0.5 * sampleRate);
+    const totalFrames = buffers.reduce((sum, b) => sum + b.length, 0) + gapFrames * Math.max(0, buffers.length - 1);
+    // createBuffer's channel data starts zero-filled, so the gaps between
+    // clips don't need to be written at all -- just skipped over.
+    const combined = ctx.createBuffer(numChannels, totalFrames, sampleRate);
+    let writeOffset = 0;
+    buffers.forEach((buf, i) => {
+      for (let c = 0; c < numChannels; c++) {
+        combined.getChannelData(c).set(buf.getChannelData(c < buf.numberOfChannels ? c : 0), writeOffset);
+      }
+      writeOffset += buf.length + (i < buffers.length - 1 ? gapFrames : 0);
+    });
+    return audioBufferToWavBlob(combined);
+  } finally {
+    ctx.close();
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

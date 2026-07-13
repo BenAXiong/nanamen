@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ChevronDown, ChevronRight, Copy, Sparkles, Upload } from "lucide-react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { ChevronDown, ChevronRight, Copy, Download, Sparkles, Upload } from "lucide-react";
 import type { Lesson } from "@/lib/content";
 import {
+  concatenateAudioClips,
   parseImportedDialogue,
   renderDialogueCanvas,
   renderDialogueHtml,
@@ -13,12 +14,30 @@ import { DialoguePracticeOverlay } from "@/components/DialoguePracticeOverlay";
 
 const STORAGE_KEY = "nanamen-dialogue";
 
+// Matches the server's cap (app/api/dialogue/tts/route.ts) -- checked here
+// too so a too-long line fails fast with no round trip. Individual sentences
+// are always well under this, unlike a whole composed dialogue -- that's why
+// generation is per-line rather than one call for the full draft.
+const TTS_MAX_CHARS = 300;
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 // Tiny external store over localStorage, read via useSyncExternalStore so
-// SSR/hydration is handled by React itself (getServerSnapshot = {}) instead
-// of the useEffect+setState dance, which a stricter lint rule flags as
-// risking cascading renders -- same pattern as lib/state.ts.
+// SSR/hydration is handled by React itself (getServerSnapshot returns a
+// fixed empty-object constant -- must be referentially stable across calls,
+// not a fresh {} literal each time, or React logs an infinite-loop warning)
+// instead of the useEffect+setState dance, which a stricter lint rule flags
+// as risking cascading renders -- same pattern as lib/state.ts.
 type DraftMap = Record<string, string>;
-let cachedDrafts: DraftMap = {};
+const EMPTY_DRAFTS: DraftMap = {};
+let cachedDrafts: DraftMap = EMPTY_DRAFTS;
 let initialized = false;
 const listeners = new Set<() => void>();
 
@@ -49,7 +68,7 @@ function getSnapshot(): DraftMap {
 }
 
 function getServerSnapshot(): DraftMap {
-  return {};
+  return EMPTY_DRAFTS;
 }
 
 function commitDraft(lessonSlug: string, text: string) {
@@ -74,7 +93,20 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
   const [practicing, setPracticing] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [audioStatus, setAudioStatus] = useState<{ text: string; isError: boolean } | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioProgress, setAudioProgress] = useState<{ done: number; total: number } | null>(null);
+  const [isDownloadingAudio, setIsDownloadingAudio] = useState(false);
+
+  // Per-line generated audio, keyed by index into splitDialogueLines(draft)
+  // -- data: URIs so the same values work for live playback (Practice
+  // overlay) and get baked directly into the HTML export with no extra
+  // encoding step. Stale (index-mismatched) once the draft or lesson
+  // changes, so both clear it.
+  const [audioClips, setAudioClips] = useState<Record<number, string>>({});
+  const [audioClipsForLesson, setAudioClipsForLesson] = useState(lessonSlug);
+  if (lessonSlug !== audioClipsForLesson) {
+    setAudioClipsForLesson(lessonSlug);
+    setAudioClips({});
+  }
 
   // Selection resets to "everything included" whenever the lesson changes.
   const [included, setIncluded] = useState<Set<string>>(() => new Set(allSentences.map((s) => s.id)));
@@ -86,14 +118,11 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
 
   const drafts = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const draft = drafts[lessonSlug] ?? "";
-  const setDraft = (text: string) => commitDraft(lessonSlug, text);
-
-  // Revoke the last generated-audio object URL on unmount so it doesn't leak.
-  useEffect(() => {
-    return () => {
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
-    };
-  }, [audioUrl]);
+  const setDraft = (text: string) => {
+    commitDraft(lessonSlug, text);
+    setAudioClips({});
+    setAudioStatus(null);
+  };
 
   const toggle = (id: string) => {
     setIncluded((prev) => {
@@ -142,7 +171,16 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
   };
 
   const exportHtml = () => {
-    const html = renderDialogueHtml(splitDialogueLines(draft), lesson?.title ?? lessonSlug);
+    const lines = splitDialogueLines(draft);
+    const clipCount = lines.filter((_, i) => audioClips[i]).length;
+    if (lines.length > 0 && clipCount < lines.length) {
+      const message =
+        clipCount === 0
+          ? "No audio has been generated for this dialogue yet — export without audio?"
+          : `Only ${clipCount} of ${lines.length} lines have generated audio — export anyway?`;
+      if (!window.confirm(message)) return;
+    }
+    const html = renderDialogueHtml(lines, lesson?.title ?? lessonSlug, audioClips);
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -169,27 +207,84 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
     );
   };
 
-  const generateAudio = async () => {
+  // Generates one clip per line rather than one for the whole draft -- a
+  // single sentence is always comfortably under TTS_MAX_CHARS, so this
+  // sidesteps the length cap entirely instead of needing to chunk/stitch a
+  // long draft back together. Calls are sequential (not parallel) to go
+  // easy on a free, no-SLA public endpoint. Partial results are kept on a
+  // mid-way failure, so whatever generated successfully is still usable.
+  const generateAllAudio = async () => {
     setAudioStatus(null);
-    setIsGeneratingAudio(true);
-    try {
-      const res = await fetch("/api/dialogue/tts", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: draft }),
+    const lines = splitDialogueLines(draft);
+    if (lines.length === 0) {
+      setAudioStatus({ text: "Nothing to generate audio for yet.", isError: true });
+      return;
+    }
+    // audioClips is cleared any time the draft changes (see setDraft above),
+    // so already having a clip for every current line proves nothing has
+    // changed since the last successful generation -- skip re-calling the
+    // endpoint entirely rather than just re-synthesizing unchanged content.
+    if (lines.every((_, i) => audioClips[i])) {
+      setAudioStatus({ text: "Audio is already up to date.", isError: false });
+      return;
+    }
+    const tooLong = lines.find((l) => l.text.length > TTS_MAX_CHARS);
+    if (tooLong) {
+      setAudioStatus({
+        text: `A line is too long for TTS (max ${TTS_MAX_CHARS} chars): "${tooLong.text.slice(0, 40)}…"`,
+        isError: true,
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        setAudioStatus({ text: body?.error ?? `Request failed (${res.status})`, isError: true });
-        return;
+      return;
+    }
+
+    setIsGeneratingAudio(true);
+    const clips: Record<number, string> = {};
+    try {
+      for (let i = 0; i < lines.length; i++) {
+        setAudioProgress({ done: i, total: lines.length });
+        const res = await fetch("/api/dialogue/tts", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ text: lines[i].text }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          setAudioStatus({ text: body?.error ?? `Request failed on line ${i + 1} (${res.status})`, isError: true });
+          return;
+        }
+        clips[i] = await blobToDataUrl(await res.blob());
       }
-      const blob = await res.blob();
-      setAudioUrl(URL.createObjectURL(blob));
-      setAudioStatus({ text: "Audio ready.", isError: false });
+      setAudioStatus({ text: `Generated audio for ${lines.length} line${lines.length === 1 ? "" : "s"}.`, isError: false });
     } catch (err) {
       setAudioStatus({ text: err instanceof Error ? err.message : String(err), isError: true });
     } finally {
+      setAudioClips(clips);
+      setAudioProgress(null);
       setIsGeneratingAudio(false);
+    }
+  };
+
+  // Decodes and stitches the generated per-line clips (in line order, gaps
+  // skipped) into one downloadable WAV via concatenateAudioClips -- there's
+  // no single "full draft" clip from generation itself, since TTS runs per
+  // sentence to stay under the length cap (see generateAllAudio above).
+  const downloadFullAudio = async () => {
+    const lines = splitDialogueLines(draft);
+    const clips = lines.map((_, i) => audioClips[i]).filter((c): c is string => !!c);
+    if (clips.length === 0) return;
+    setIsDownloadingAudio(true);
+    try {
+      const blob = await concatenateAudioClips(clips);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dialogue-${lessonSlug}.wav`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setAudioStatus({ text: err instanceof Error ? err.message : String(err), isError: true });
+    } finally {
+      setIsDownloadingAudio(false);
     }
   };
 
@@ -219,14 +314,32 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
         </label>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setShowSelection((prev) => !prev)}
-        className="flex shrink-0 items-center gap-1 self-start text-sm text-stone-600 dark:text-stone-300"
-      >
-        {showSelection ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        {showSelection ? "Hide list" : "Show list"} ({included.size} selected)
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setShowSelection((prev) => !prev)}
+          className="flex min-w-0 shrink-0 items-center gap-1 text-sm text-stone-600 dark:text-stone-300"
+        >
+          {showSelection ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          Sentence list ({included.size} selected)
+        </button>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={() => setIncluded(new Set(allSentences.map((s) => s.id)))}
+            className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setIncluded(new Set())}
+            className="rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+          >
+            None
+          </button>
+        </div>
+      </div>
 
       {showSelection ? (
         <div className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-xl border border-stone-200 p-2 dark:border-stone-800">
@@ -274,6 +387,15 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
         >
           Compose ({included.size})
         </button>
+        <button
+          type="button"
+          onClick={() => navigator.clipboard.writeText(draft)}
+          aria-label="Copy to clipboard"
+          title="Copy to clipboard"
+          className="flex aspect-square h-11 shrink-0 items-center justify-center rounded-lg border border-stone-300 text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+        >
+          <Copy className="h-5 w-5" />
+        </button>
       </div>
 
       <textarea
@@ -287,10 +409,10 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
       <div className="flex gap-3">
         <button
           type="button"
-          onClick={generateAudio}
+          onClick={generateAllAudio}
           disabled={isGeneratingAudio}
           aria-label={isGeneratingAudio ? "Generating audio…" : "Generate audio"}
-          title="Generate audio"
+          title="Generate audio, one clip per line"
           className="flex aspect-square h-11 shrink-0 items-center justify-center rounded-lg border border-stone-300 text-stone-700 transition active:scale-95 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300"
         >
           <Sparkles className={`h-5 w-5 ${isGeneratingAudio ? "animate-pulse" : ""}`} />
@@ -304,12 +426,13 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
         </button>
         <button
           type="button"
-          onClick={() => navigator.clipboard.writeText(draft)}
-          aria-label="Copy to clipboard"
-          title="Copy to clipboard"
-          className="flex aspect-square h-11 shrink-0 items-center justify-center rounded-lg border border-stone-300 text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+          onClick={downloadFullAudio}
+          disabled={isDownloadingAudio || Object.keys(audioClips).length === 0}
+          aria-label="Download full audio"
+          title="Download full audio (all generated lines, combined)"
+          className="flex aspect-square h-11 shrink-0 items-center justify-center rounded-lg border border-stone-300 text-stone-700 transition active:scale-95 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300"
         >
-          <Copy className="h-5 w-5" />
+          <Download className="h-5 w-5" />
         </button>
       </div>
 
@@ -337,35 +460,21 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
         </button>
       </div>
 
-      {audioStatus ? (
+      {audioProgress ? (
+        <span className="text-xs text-stone-500 dark:text-stone-400">
+          Generating audio {audioProgress.done + 1} / {audioProgress.total}…
+        </span>
+      ) : audioStatus ? (
         <span className={`text-xs ${audioStatus.isError ? "text-red-600 dark:text-red-400" : "text-stone-500 dark:text-stone-400"}`}>
           {audioStatus.text}
         </span>
-      ) : null}
-
-      {audioUrl ? (
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => new Audio(audioUrl).play()}
-            className="flex-1 rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
-          >
-            Play
-          </button>
-          <a
-            href={audioUrl}
-            download={`dialogue-${lessonSlug}.mp3`}
-            className="flex-1 rounded-lg bg-accent px-4 py-2 text-center text-sm font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
-          >
-            Download
-          </a>
-        </div>
       ) : null}
 
       {practicing ? (
         <DialoguePracticeOverlay
           draft={draft}
           lessonTitle={lesson?.title ?? lessonSlug}
+          audioClips={audioClips}
           onClose={() => setPracticing(false)}
         />
       ) : null}
