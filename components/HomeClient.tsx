@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Shuffle, X } from "lucide-react";
 import { getPairs, type Lesson, type Pair } from "@/lib/content";
 import { useNanamenState, isPairSuspended, isSentenceSuspended } from "@/lib/state";
@@ -8,7 +8,10 @@ import { useDeckSelection, type Selection } from "@/lib/useDeckSelection";
 import { DeckPicker } from "@/components/DeckPicker";
 import { ExposureClient, type ExposureItem } from "@/components/ExposureClient";
 import { PairDrillClient } from "@/components/PairDrillClient";
+import { SecretMenuOverlay } from "@/components/SecretMenuOverlay";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+const SECRET_MENU_HOLD_MS = 5000;
 
 type ActiveScreen = "picker" | "exposure" | "test";
 
@@ -74,6 +77,24 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
   const [screen, setScreen] = useState<ActiveScreen>("picker");
   const [sessionItems, setSessionItems] = useState<ExposureItem[]>([]);
   const [sessionPairs, setSessionPairs] = useState<Pair[]>([]);
+
+  // Press-and-hold the title for the hidden Import/Edit/Dialogue tools --
+  // same "reachable only if you know it's there" pattern those routes
+  // already use (see app/dialogue/page.tsx), just with a discoverable-by-
+  // insiders entry point instead of only a bookmarked URL.
+  const [showSecretMenu, setShowSecretMenu] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = setTimeout(() => setShowSecretMenu(true), SECRET_MENU_HOLD_MS);
+  };
+  const cancelHold = () => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  };
+  useEffect(() => () => cancelHold(), []);
 
   const weakSet = useMemo(() => new Set(weakPairIds), [weakPairIds]);
 
@@ -183,7 +204,15 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
     <div className="flex flex-1 flex-col">
       <header className="py-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-stone-900 dark:text-stone-50">Nanamen</h1>
+          <h1
+            className="select-none text-2xl font-semibold text-stone-900 dark:text-stone-50"
+            onPointerDown={startHold}
+            onPointerUp={cancelHold}
+            onPointerLeave={cancelHold}
+            onPointerCancel={cancelHold}
+          >
+            Nanamen
+          </h1>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -257,6 +286,8 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
           Test ({testPairs.length})
         </button>
       </div>
+
+      {showSecretMenu ? <SecretMenuOverlay onClose={() => setShowSecretMenu(false)} /> : null}
     </div>
   );
 }
