@@ -48,6 +48,34 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentence?.id]);
 
+  // Swipe left/right as an alternative to the Prev/Next buttons, swipe down
+  // as an alternative to the suspend button. Tracked on touchstart/touchend
+  // rather than a gesture library -- a couple of threshold checks, no need
+  // for anything heavier. Each direction must clearly dominate the other
+  // axis so a horizontal swipe doesn't fire while scrolling the card (its
+  // content can overflow-y-auto if a sentence is long), and vice versa.
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const SWIPE_THRESHOLD = 50;
+
+  // Card animation: `drag` follows the finger 1:1 while dragging (no
+  // transition), then either springs back to {0,0} (release below
+  // threshold) or flies off-screen in `exiting`'s direction before the
+  // underlying nav function actually runs -- so the index/onFinish change
+  // only lands once the card has visibly left. The Prev/Next/suspend
+  // buttons route through the same triggerExit so all navigation, tap or
+  // swipe, gets the same motion.
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [exiting, setExiting] = useState<"left" | "right" | "down" | null>(null);
+  const exitTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const CARD_EXIT_MS = 220;
+
+  useEffect(() => {
+    return () => {
+      if (exitTimeout.current) clearTimeout(exitTimeout.current);
+    };
+  }, []);
+
   if (!sentence) {
     return <p className="py-8 text-center text-stone-500 dark:text-stone-400">No sentences to review.</p>;
   }
@@ -65,36 +93,67 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
     goNext();
   };
 
-  // Swipe left/right as an alternative to the Prev/Next buttons, swipe down
-  // as an alternative to the suspend button. Tracked on touchstart/touchend
-  // rather than a gesture library -- a couple of threshold checks, no need
-  // for anything heavier. Each direction must clearly dominate the other
-  // axis so a horizontal swipe doesn't fire while scrolling the card (its
-  // content can overflow-y-auto if a sentence is long), and vice versa.
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const SWIPE_THRESHOLD = 50;
+  const triggerExit = (direction: "left" | "right" | "down", action: () => void) => {
+    if (exiting) return;
+    setIsDragging(false);
+    setExiting(direction);
+    setDrag({
+      x: direction === "left" ? -window.innerWidth : direction === "right" ? window.innerWidth : 0,
+      y: direction === "down" ? 400 : 0,
+    });
+    exitTimeout.current = setTimeout(() => {
+      setDrag({ x: 0, y: 0 });
+      setExiting(null);
+      action();
+    }, CARD_EXIT_MS);
+  };
+
+  const resetDrag = () => {
+    touchStart.current = null;
+    setIsDragging(false);
+    setDrag({ x: 0, y: 0 });
+  };
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (exiting) return;
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    if (!start || exiting) return;
+    const t = e.touches[0];
+    setIsDragging(true);
+    setDrag({ x: t.clientX - start.x, y: t.clientY - start.y });
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
     const start = touchStart.current;
     touchStart.current = null;
-    if (!start) return;
+    if (!start || exiting) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
+    setIsDragging(false);
     if (Math.abs(dx) >= Math.abs(dy)) {
-      if (Math.abs(dx) < SWIPE_THRESHOLD) return;
-      if (dx < 0) goNext();
-      else goPrev();
+      if (Math.abs(dx) < SWIPE_THRESHOLD) {
+        setDrag({ x: 0, y: 0 });
+        return;
+      }
+      if (dx < 0) triggerExit("left", goNext);
+      else triggerExit("right", goPrev);
     } else {
-      if (dy < SWIPE_THRESHOLD) return;
-      suspendAndAdvance();
+      if (dy < SWIPE_THRESHOLD) {
+        setDrag({ x: 0, y: 0 });
+        return;
+      }
+      triggerExit("down", suspendAndAdvance);
     }
   };
+
+  const cardRotation = Math.max(-15, Math.min(15, drag.x / 18));
+  const cardOpacity = exiting ? 0 : 1 - Math.min(Math.abs(drag.x) / 500, 0.3);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -105,9 +164,10 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={suspendAndAdvance}
+            onClick={() => triggerExit("down", suspendAndAdvance)}
+            disabled={exiting !== null}
             aria-label="Suspend this sentence"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 disabled:opacity-30 dark:text-stone-400 dark:hover:bg-stone-800"
           >
             <Pause className="h-4 w-4" />
           </button>
@@ -127,25 +187,40 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <div className="flex h-[38vh] w-full flex-col items-center justify-center gap-6 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900">
-          <p
-            onClick={() => setAmisRevealed((r) => !r)}
-            className={`cursor-pointer text-2xl font-medium text-stone-900 transition-all dark:text-stone-50 ${
-              amisRevealed || amisAlwaysVisible ? "" : "select-none blur-sm"
-            }`}
+      <div
+        className="flex flex-1 items-center justify-center"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={resetDrag}
+      >
+        <div key={sentence.id} className="w-full animate-[card-enter_180ms_ease-out]">
+          <div
+            className="flex h-[38vh] w-full flex-col items-center justify-center gap-6 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900"
+            style={{
+              transform: `translate(${drag.x}px, ${drag.y}px) rotate(${cardRotation}deg)`,
+              opacity: cardOpacity,
+              transition: isDragging ? "none" : "transform 220ms ease-out, opacity 220ms ease-out",
+            }}
           >
-            {sentence.amis}
-          </p>
-          <p
-            onClick={() => setZhRevealed((r) => !r)}
-            className={`cursor-pointer text-lg text-stone-600 transition-all dark:text-stone-300 ${
-              zhRevealed ? "" : "select-none blur-sm"
-            }`}
-          >
-            {sentence.zh}
-          </p>
-          <AudioButton url={sentence.audioUrl} playing={isPlaying} onPlay={() => play(sentence.audioUrl!)} />
+            <p
+              onClick={() => setAmisRevealed((r) => !r)}
+              className={`cursor-pointer text-2xl font-medium text-stone-900 transition-all dark:text-stone-50 ${
+                amisRevealed || amisAlwaysVisible ? "" : "select-none blur-sm"
+              }`}
+            >
+              {sentence.amis}
+            </p>
+            <p
+              onClick={() => setZhRevealed((r) => !r)}
+              className={`cursor-pointer text-lg text-stone-600 transition-all dark:text-stone-300 ${
+                zhRevealed ? "" : "select-none blur-sm"
+              }`}
+            >
+              {sentence.zh}
+            </p>
+            <AudioButton url={sentence.audioUrl} playing={isPlaying} onPlay={() => play(sentence.audioUrl!)} />
+          </div>
         </div>
       </div>
 
@@ -167,16 +242,17 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
       <div className="mt-4 flex gap-3">
         <button
           type="button"
-          disabled={index === 0}
-          onClick={goPrev}
+          disabled={index === 0 || exiting !== null}
+          onClick={() => triggerExit("right", goPrev)}
           className="flex-1 rounded-lg border border-stone-300 py-3 font-medium text-stone-700 transition active:scale-95 disabled:opacity-30 dark:border-stone-700 dark:text-stone-300"
         >
           Prev
         </button>
         <button
           type="button"
-          onClick={goNext}
-          className="flex-1 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
+          disabled={exiting !== null}
+          onClick={() => triggerExit("left", goNext)}
+          className="flex-1 rounded-lg bg-accent py-3 font-medium text-white transition active:scale-95 disabled:opacity-30 dark:bg-stone-100 dark:text-stone-900"
         >
           {index === items.length - 1 ? "Home" : "Next"}
         </button>
