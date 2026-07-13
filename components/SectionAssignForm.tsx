@@ -104,7 +104,7 @@ export function SectionAssignForm({
           value={classDate}
           onChange={(e) => setClassDate(e.target.value)}
           placeholder="YY/MM/DD (class date)"
-          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm dark:border-stone-700 dark:bg-stone-900"
+          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-900 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-50"
         />
 
         <div className="grid grid-cols-6 gap-1.5 text-center text-xs text-stone-400 dark:text-stone-600">
@@ -123,7 +123,7 @@ export function SectionAssignForm({
               onChange={(e) => updateRow(i, { order: e.target.value })}
               placeholder="#"
               title={row.name}
-              className="w-full rounded-lg border border-stone-300 px-1 py-1.5 text-center text-sm dark:border-stone-700 dark:bg-stone-900"
+              className="w-full rounded-lg border border-stone-300 px-1 py-1.5 text-center text-sm text-stone-900 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-50"
             />
           ))}
         </div>

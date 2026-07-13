@@ -8,7 +8,7 @@ import type { LessonSentence, ManualConfig } from "@/lib/rekadImport.server";
 
 const TABS = [
   { key: "text", label: "Amis & Zh" },
-  { key: "sections", label: "Lesson & section" },
+  { key: "sections", label: "Title & sections" },
   { key: "pairtag", label: "Pair tag" },
 ] as const;
 
