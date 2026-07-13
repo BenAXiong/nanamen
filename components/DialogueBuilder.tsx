@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, Copy, Sparkles, Upload } from "lucide-react";
 import type { Lesson } from "@/lib/content";
-import { renderDialogueCanvas, renderDialogueHtml, splitDialogueLines } from "@/lib/dialogueFormat";
+import {
+  parseImportedDialogue,
+  renderDialogueCanvas,
+  renderDialogueHtml,
+  splitDialogueLines,
+} from "@/lib/dialogueFormat";
 import { DialoguePracticeOverlay } from "@/components/DialoguePracticeOverlay";
 
 const STORAGE_KEY = "nanamen-dialogue";
@@ -89,6 +94,21 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
       if (!ok) return;
     }
     setDraft(text);
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const triggerImport = () => fileInputRef.current?.click();
+
+  const importFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file next time
+    if (!file) return;
+    const parsed = parseImportedDialogue(file.name, await file.text());
+    if (draft.trim() && draft !== parsed) {
+      const ok = window.confirm("Replace the current draft with the imported file? This can't be undone.");
+      if (!ok) return;
+    }
+    setDraft(parsed);
   };
 
   const exportTxt = () => {
@@ -210,13 +230,31 @@ export function DialogueBuilder({ lessons }: { lessons: Lesson[] }) {
         </div>
       ) : null}
 
-      <button
-        type="button"
-        onClick={compose}
-        className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
-      >
-        Compose ({included.size})
-      </button>
+      <div className="flex gap-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.html,.htm,text/plain,text/html"
+          onChange={importFile}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={triggerImport}
+          aria-label="Import dialogue from a .txt or .html file"
+          title="Import from file"
+          className="flex aspect-square h-11 shrink-0 items-center justify-center rounded-lg border border-stone-300 text-stone-700 transition active:scale-95 dark:border-stone-700 dark:text-stone-300"
+        >
+          <Upload className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={compose}
+          className="flex-1 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition active:scale-95 dark:bg-stone-100 dark:text-stone-900"
+        >
+          Compose ({included.size})
+        </button>
+      </div>
 
       <textarea
         value={draft}

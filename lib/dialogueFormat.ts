@@ -21,6 +21,24 @@ export function dialogueTitle(lessonTitle: string): string {
   return match ? `Lesson ${match[1]}` : lessonTitle;
 }
 
+// Inverse of renderDialogueHtml, for the DialogueBuilder's import button --
+// a .txt file is used as-is, an .html file (ours or otherwise) has its
+// paragraph text pulled out in document order and rejoined with newlines,
+// same shape splitDialogueLines expects (speaker alternation is re-derived
+// from line order on the way back in, not read off the file). Browser-only
+// (DOMParser) -- only ever called from a client-side file input handler.
+export function parseImportedDialogue(filename: string, text: string): string {
+  const looksLikeHtml = /\.html?$/i.test(filename) || /<\/?(?:html|body|main|p)[\s>]/i.test(text);
+  if (!looksLikeHtml) return text.trim();
+
+  const doc = new DOMParser().parseFromString(text, "text/html");
+  const root = doc.querySelector("main") ?? doc.body;
+  return Array.from(root.querySelectorAll("p"))
+    .map((p) => p.textContent?.trim() ?? "")
+    .filter(Boolean)
+    .join("\n");
+}
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
