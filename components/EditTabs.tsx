@@ -64,7 +64,9 @@ export function EditTabs({
           onSuccessMode="refresh"
         />
       ) : null}
-      {tab === "pairtag" ? <EditPairTagTab key={dataKey} sentences={sentences} /> : null}
+      {tab === "pairtag" ? (
+        <EditPairTagTab key={dataKey} lessonNumber={lessonNumber} sentences={sentences} />
+      ) : null}
     </div>
   );
 }

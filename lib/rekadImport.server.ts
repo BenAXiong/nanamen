@@ -169,6 +169,7 @@ export type LessonSentence = {
   zh: string;
   section: string | null;
   pairTag: string | null;
+  audioUrl: string | null;
 };
 
 async function fetchAllRecords(readKey: string): Promise<
@@ -203,6 +204,7 @@ export async function getLessonSentences(lessonNumber: number): Promise<LessonSe
         zh: (record.fields.Zh as string) ?? "",
         section: (record.fields.Section as string) ?? null,
         pairTag: (record.fields["Pair Tag"] as string) ?? null,
+        audioUrl: (record.fields.Audio as { url: string }[] | undefined)?.[0]?.url ?? null,
       });
     }
   }

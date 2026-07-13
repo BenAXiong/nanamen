@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { savePairTagEdits } from "@/app/edit/actions";
 import type { LessonSentence, SaveResult } from "@/lib/rekadImport.server";
+import { renderPairTagOverviewHtml } from "@/lib/pairTagHtml";
 
 type Choice = "Q" | "A" | null;
 const OPTIONS: Choice[] = ["Q", "A", null];
@@ -15,13 +16,29 @@ function parseChoice(pairTag: string | null): Choice {
   return null;
 }
 
-export function EditPairTagTab({ sentences }: { sentences: LessonSentence[] }) {
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+export function EditPairTagTab({
+  lessonNumber,
+  sentences,
+}: {
+  lessonNumber: number;
+  sentences: LessonSentence[];
+}) {
   const router = useRouter();
   const [choices, setChoices] = useState<Record<string, Choice>>(() =>
     Object.fromEntries(sentences.map((s) => [s.id, parseChoice(s.pairTag)])),
   );
   const [result, setResult] = useState<SaveResult | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isGeneratingHtml, setIsGeneratingHtml] = useState(false);
 
   const groups = useMemo(() => {
     const map = new Map<string, LessonSentence[]>();
@@ -59,18 +76,73 @@ export function EditPairTagTab({ sentences }: { sentences: LessonSentence[] }) {
     });
   };
 
+  // Uses the on-screen Q/A/none choices (not a re-fetch), so an export
+  // reflects unsaved edits same as the label preview does. Every sentence
+  // that already has audio in Airtable gets it baked into the export as a
+  // data: URI -- fetched fresh here rather than reused across generations,
+  // since the Airtable attachment URL is a short-lived signed link that may
+  // have expired since the page loaded.
+  const onGenerateHtml = async () => {
+    setIsGeneratingHtml(true);
+    try {
+      const audioById = new Map<string, string>();
+      await Promise.all(
+        sentences.map(async (s) => {
+          if (!s.audioUrl) return;
+          try {
+            const res = await fetch(s.audioUrl);
+            if (!res.ok) return;
+            audioById.set(s.id, await blobToDataUrl(await res.blob()));
+          } catch {
+            // Skip -- the rest of the export still proceeds without this clip.
+          }
+        }),
+      );
+
+      const sections = groups.map(([sectionName, group]) => ({
+        name: sectionName,
+        sentences: group.map((s) => ({
+          amis: s.amis,
+          zh: s.zh,
+          choice: choices[s.id],
+          audio: audioById.get(s.id) ?? null,
+        })),
+      }));
+      const html = renderPairTagOverviewHtml(sections, lessonNumber);
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lesson-${lessonNumber}-sections.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsGeneratingHtml(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-stone-700 dark:text-stone-300">Pair tag</h2>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={isPending}
-          className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white transition active:scale-95 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900"
-        >
-          {isPending ? "Saving…" : "Save"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onGenerateHtml}
+            disabled={isGeneratingHtml}
+            className="rounded-lg border border-stone-300 px-4 py-1.5 text-sm font-medium text-stone-700 transition active:scale-95 disabled:opacity-50 dark:border-stone-700 dark:text-stone-300"
+          >
+            {isGeneratingHtml ? "Generating…" : "Generate html"}
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isPending}
+            className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white transition active:scale-95 disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900"
+          >
+            {isPending ? "Saving…" : "Save"}
+          </button>
+        </div>
       </div>
 
       {result ? (
