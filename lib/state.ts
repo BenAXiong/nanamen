@@ -104,6 +104,15 @@ function toggleSuspendSentence(state: StoredState, id: string): StoredState {
   };
 }
 
+// Unlike toggleSuspendSentence, this always suspends (never un-suspends) --
+// used for "suspend all" on a whole section, where toggling per-sentence
+// would un-suspend already-suspended ones instead of leaving them alone.
+function suspendSentences(state: StoredState, ids: string[]): StoredState {
+  const set = new Set(state.suspendedSentences);
+  for (const id of ids) set.add(id);
+  return { ...state, suspendedSentences: [...set] };
+}
+
 // Marking complete never downgrades a section that's already "tested".
 function markSectionsComplete(state: StoredState, keys: string[]): StoredState {
   const sectionStatus = { ...state.sectionStatus };
@@ -162,6 +171,7 @@ export function useNanamenState() {
     gradeMissed: (id: string) => commit(gradeMissed(state, id)),
     dismissWeak: (id: string) => commit(dismissWeak(state, id)),
     toggleSuspendSentence: (id: string) => commit(toggleSuspendSentence(state, id)),
+    suspendSentences: (ids: string[]) => commit(suspendSentences(state, ids)),
     markSectionsComplete: (keys: string[]) => commit(markSectionsComplete(state, keys)),
     markSectionsTested: (keys: string[]) => commit(markSectionsTested(state, keys)),
   };

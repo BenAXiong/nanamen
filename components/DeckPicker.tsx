@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, ChevronDown, ChevronRight, Circle } from "lucide-react";
 import type { Lesson } from "@/lib/content";
+import { SectionActionsOverlay } from "@/components/SectionActionsOverlay";
 import { SentenceListClient } from "@/components/SentenceListClient";
 import { getSectionStatus, sectionKey, useNanamenState, type SectionStatus } from "@/lib/state";
 import type { useDeckSelection } from "@/lib/useDeckSelection";
 
 const NEUTRAL = "text-stone-400 dark:text-stone-500";
+const SECTION_LONG_PRESS_MS = 1000;
+
+type SectionMenuTarget = {
+  lessonSlug: string;
+  sectionSlug: string;
+  sectionTitle: string;
+  sentenceIds: string[];
+};
 
 // Plain (grey) circle by default; it fills green once the section has been
 // reviewed. The tick itself only appears once it's been tested -- not a
@@ -78,12 +87,42 @@ export function DeckPicker({
   deck: DeckSelectionApi;
   tone?: PickerTone;
 }) {
-  const { state } = useNanamenState();
+  const { state, markSectionsComplete, markSectionsTested, suspendSentences } = useNanamenState();
   const [openLessonSlug, setOpenLessonSlug] = useState<string | null>(
     lessons[lessons.length - 1]?.slug ?? null,
   );
   const [openSectionSlug, setOpenSectionSlug] = useState<string | null>(null);
   const openLesson = lessons.find((l) => l.slug === openLessonSlug) ?? null;
+
+  // Long-press a section row for a quick-actions overlay (suspend all /
+  // mark complete / mark tested), as an alternative to opening the section
+  // and doing each sentence one at a time. A fired long-press suppresses
+  // the row's own click (which otherwise expands/collapses it).
+  const [sectionMenu, setSectionMenu] = useState<SectionMenuTarget | null>(null);
+  const longPressFired = useRef(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startSectionHold = (target: SectionMenuTarget) => {
+    longPressFired.current = false;
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      setSectionMenu(target);
+    }, SECTION_LONG_PRESS_MS);
+  };
+  const cancelSectionHold = () => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  };
+  const handleSectionClick = (sectionSlug: string, expanded: boolean) => {
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
+    setOpenSectionSlug(expanded ? null : sectionSlug);
+  };
 
   if (lessons.length === 0) {
     return <p className="py-8 text-center text-stone-500 dark:text-stone-400">Nothing here right now.</p>;
@@ -142,7 +181,18 @@ export function DeckPicker({
                   <div className="flex items-center gap-2 py-2">
                     <button
                       type="button"
-                      onClick={() => setOpenSectionSlug(expanded ? null : section.slug)}
+                      onClick={() => handleSectionClick(section.slug, expanded)}
+                      onPointerDown={() =>
+                        startSectionHold({
+                          lessonSlug: openLesson.slug,
+                          sectionSlug: section.slug,
+                          sectionTitle: section.title,
+                          sentenceIds: section.sentences.map((s) => s.id),
+                        })
+                      }
+                      onPointerUp={cancelSectionHold}
+                      onPointerLeave={cancelSectionHold}
+                      onPointerCancel={cancelSectionHold}
                       className="flex flex-1 items-center gap-1.5 text-left text-sm text-stone-700 dark:text-stone-300"
                     >
                       {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
@@ -165,6 +215,16 @@ export function DeckPicker({
             })}
           </div>
         </div>
+      ) : null}
+
+      {sectionMenu ? (
+        <SectionActionsOverlay
+          title={sectionMenu.sectionTitle}
+          onSuspendAll={() => suspendSentences(sectionMenu.sentenceIds)}
+          onMarkComplete={() => markSectionsComplete([sectionKey(sectionMenu.lessonSlug, sectionMenu.sectionSlug)])}
+          onMarkTested={() => markSectionsTested([sectionKey(sectionMenu.lessonSlug, sectionMenu.sectionSlug)])}
+          onClose={() => setSectionMenu(null)}
+        />
       ) : null}
     </div>
   );
