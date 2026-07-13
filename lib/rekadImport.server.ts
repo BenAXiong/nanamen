@@ -152,6 +152,16 @@ async function updateAirtableRecords(
   }
 }
 
+async function deleteAirtableRecords(ids: string[], writeKey: string): Promise<void> {
+  for (let i = 0; i < ids.length; i += 10) {
+    const batch = ids.slice(i, i + 10);
+    const url = new URL(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`);
+    for (const id of batch) url.searchParams.append("records[]", id);
+    const res = await fetch(url, { method: "DELETE", headers: { Authorization: `Bearer ${writeKey}` } });
+    if (!res.ok) throw new Error(`Airtable delete failed: ${res.status} ${await res.text()}`);
+  }
+}
+
 export type LessonSentence = {
   id: string;
   order: number;
@@ -325,6 +335,64 @@ export async function savePairTags(
   }));
   await updateAirtableRecords(records, writeKey);
   return { status: "ok", updated: records.length };
+}
+
+export type InsertResult = { status: "ok"; id: string } | { status: "error"; message: string };
+
+// position is the 1-indexed Order the new sentence should land on. Order has
+// no decimal precision in Airtable (confirmed via the field schema), so a
+// fractional "insert between 5 and 6" index isn't available -- instead every
+// existing sentence at or after the target position shifts up one slot to
+// make room, same integer-Order convention the rest of this file relies on.
+export async function insertSentence(
+  lessonNumber: number,
+  position: number,
+  amis: string,
+  zh: string,
+  audioUrl?: string,
+): Promise<InsertResult> {
+  const writeKey = process.env.AIRTABLE_WRITE_KEY;
+  if (!writeKey) return { status: "error", message: "Missing AIRTABLE_WRITE_KEY in .env.local" };
+
+  const [sentences, lessons] = await Promise.all([getLessonSentences(lessonNumber), getAllRekadLessons()]);
+  const lessonName = lessons.find((l) => l.number === lessonNumber)?.name ?? `Rekad ${lessonNumber}`;
+  const maxOrder = sentences.reduce((m, s) => Math.max(m, s.order), 0);
+  const clamped = Math.min(Math.max(Math.round(position), 1), maxOrder + 1);
+
+  const toShift = sentences.filter((s) => s.order >= clamped);
+  if (toShift.length > 0) {
+    await updateAirtableRecords(
+      toShift.map((s) => ({ id: s.id, fields: { [FIELD.order]: s.order + 1 } })),
+      writeKey,
+    );
+  }
+
+  // New sentences are left unsectioned and untagged (same as a fresh import
+  // row) -- Section/Pair Tag stay a deliberate manual step via the other
+  // Edit tabs rather than guessed here.
+  const fields: Record<string, unknown> = {
+    [FIELD.amis]: amis,
+    [FIELD.zh]: zh,
+    [FIELD.lesson]: lessonName,
+    [FIELD.order]: clamped,
+  };
+  if (audioUrl) fields[FIELD.audio] = [{ url: audioUrl }];
+
+  const res = await fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${writeKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ typecast: true, records: [{ fields }] }),
+  });
+  if (!res.ok) return { status: "error", message: `Airtable write failed: ${res.status} ${await res.text()}` };
+  const body = await res.json();
+  return { status: "ok", id: body.records[0].id };
+}
+
+export async function deleteSentence(id: string): Promise<SaveResult> {
+  const writeKey = process.env.AIRTABLE_WRITE_KEY;
+  if (!writeKey) return { status: "error", message: "Missing AIRTABLE_WRITE_KEY in .env.local" };
+  await deleteAirtableRecords([id], writeKey);
+  return { status: "ok", updated: 1 };
 }
 
 export async function checkAndImportNextLesson(): Promise<ImportResult> {

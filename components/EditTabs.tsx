@@ -54,7 +54,7 @@ export function EditTabs({
         ))}
       </div>
 
-      {tab === "text" ? <EditTextTab key={dataKey} sentences={sentences} /> : null}
+      {tab === "text" ? <EditTextTab key={dataKey} lessonNumber={lessonNumber} sentences={sentences} /> : null}
       {tab === "sections" ? (
         <SectionAssignForm
           key={dataKey}
