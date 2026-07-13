@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Play, X } from "lucide-react";
 import { dialogueTitle, splitDialogueLines } from "@/lib/dialogueFormat";
 
@@ -70,13 +70,13 @@ export function DialoguePracticeOverlay({
         </button>
       </div>
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-3 px-4 pb-10">
-        <div className="flex items-center justify-between gap-3">
+        <div className="relative flex items-center justify-center gap-3">
           <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-50">{dialogueTitle(lessonTitle)}</h1>
           {hasAudio ? (
             <button
               type="button"
               onClick={playAll}
-              className="flex shrink-0 items-center gap-1 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition active:scale-95"
+              className="absolute right-0 flex shrink-0 items-center gap-1 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition active:scale-95"
             >
               <Play className="h-3 w-3 fill-current" />
               Play all
@@ -89,20 +89,24 @@ export function DialoguePracticeOverlay({
           lines.map((line, i) => {
             const clickable = !!audioClips[i];
             return (
-              <p
-                key={i}
-                onClick={clickable ? () => playClip(i) : undefined}
-                className={
-                  "max-w-[78%] rounded-2xl px-5 py-2 text-xl leading-relaxed transition " +
-                  (clickable ? "cursor-pointer " : "") +
-                  (playingIndex === i ? "ring-2 ring-offset-2 ring-offset-stone-50 dark:ring-offset-stone-950 " : "") +
-                  (line.speaker === 0
-                    ? "self-start bg-stone-200 text-stone-900 dark:bg-stone-700 dark:text-stone-100 ring-stone-400"
-                    : "self-end bg-violet-600 text-white ring-violet-300")
-                }
-              >
-                {line.text}
-              </p>
+              <Fragment key={i}>
+                {line.dividerBefore ? (
+                  <hr className="w-full shrink-0 border-t border-dashed border-stone-300 dark:border-stone-700" />
+                ) : null}
+                <p
+                  onClick={clickable ? () => playClip(i) : undefined}
+                  className={
+                    "max-w-[78%] rounded-2xl px-5 py-2 text-xl leading-relaxed transition " +
+                    (clickable ? "cursor-pointer " : "") +
+                    (playingIndex === i ? "ring-2 ring-offset-2 ring-offset-stone-50 dark:ring-offset-stone-950 " : "") +
+                    (line.speaker === 0
+                      ? "self-start bg-stone-200 text-stone-900 dark:bg-stone-700 dark:text-stone-100 ring-stone-400"
+                      : "self-end bg-violet-600 text-white ring-violet-300")
+                  }
+                >
+                  {line.text}
+                </p>
+              </Fragment>
             );
           })
         )}

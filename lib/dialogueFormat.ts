@@ -1,24 +1,31 @@
-export type DialogueLine = { text: string; speaker: 0 | 1 };
+export type DialogueLine = { text: string; speaker: 0 | 1; dividerBefore?: boolean };
 
 // Blank lines are dropped and don't consume a speaker slot, so stray blank
-// lines from manual edits don't desync the ABAB alternation.
+// lines from manual edits don't desync the ABAB alternation. A blank line
+// is instead remembered as a divider marker on the next non-blank line, so
+// the preview/export can render a section break where the author put one.
 export function splitDialogueLines(draft: string): DialogueLine[] {
   const lines: DialogueLine[] = [];
   let speaker: 0 | 1 = 0;
+  let pendingDivider = false;
   for (const raw of draft.split("\n")) {
     const text = raw.trim();
-    if (!text) continue;
-    lines.push({ text, speaker });
+    if (!text) {
+      if (lines.length > 0) pendingDivider = true;
+      continue;
+    }
+    lines.push(pendingDivider ? { text, speaker, dividerBefore: true } : { text, speaker });
+    pendingDivider = false;
     speaker = speaker === 0 ? 1 : 0;
   }
   return lines;
 }
 
 // Shared by the HTML export, the practice overlay, and the JPG export so all
-// three always show the same title -- "Rekad 3 - 26/07/15" becomes "Lesson 3".
+// three always show the same title -- "Rekad 3 - 26/07/15" becomes "Rekad 3 - 對話".
 export function dialogueTitle(lessonTitle: string): string {
   const match = lessonTitle.match(/(\d+)/);
-  return match ? `Lesson ${match[1]}` : lessonTitle;
+  return match ? `Rekad ${match[1]} - 對話` : lessonTitle;
 }
 
 // Inverse of renderDialogueHtml, for the DialogueBuilder's import button --
@@ -68,7 +75,8 @@ export function renderDialogueHtml(
       const cls = clip ? `s${line.speaker} has-audio` : `s${line.speaker}`;
       const onClick = clip ? ` onclick="this.querySelector('audio').play()"` : "";
       const audioTag = clip ? `<audio preload="none" src="${clip}"></audio>` : "";
-      return `    <p class="${cls}"${onClick}>${escapeHtml(line.text)}${audioTag}</p>`;
+      const divider = line.dividerBefore ? `    <hr />\n` : "";
+      return `${divider}    <p class="${cls}"${onClick}>${escapeHtml(line.text)}${audioTag}</p>`;
     })
     .join("\n");
 
@@ -115,15 +123,19 @@ export function renderDialogueHtml(
     gap: 0.75rem;
   }
   h1 {
+    position: relative;
     font-size: 1.125rem;
     font-weight: 600;
     margin: 0 0 0.5rem;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
+    text-align: center;
     gap: 0.75rem;
   }
   .play-all {
+    position: absolute;
+    right: 0;
     border: none;
     border-radius: 999px;
     padding: 0.4rem 0.9rem;
@@ -145,9 +157,11 @@ export function renderDialogueHtml(
   p.s1 { align-self: flex-end; background: #7c3aed; color: #ffffff; }
   p.has-audio { cursor: pointer; }
   p.has-audio:active { opacity: 0.85; }
+  hr { width: 100%; margin: 0.25rem 0; border: none; border-top: 1px dashed #d6d3d1; }
   @media (prefers-color-scheme: dark) {
     body { background: #0c0a09; color: #fafaf9; }
     p.s0 { background: #44403c; color: #f5f5f4; }
+    hr { border-top-color: #57534e; }
   }
 </style>
 </head>
