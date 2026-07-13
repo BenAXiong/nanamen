@@ -233,7 +233,19 @@ export function EditTextTab({ lessonNumber, sentences }: { lessonNumber: number;
       <div className="flex flex-col gap-1.5">
         {sentences.map((s) => (
           <div key={s.id} className="flex items-start gap-2 text-sm">
-            <span className="w-6 shrink-0 pt-2 text-stone-400 dark:text-stone-600">{s.order}</span>
+            <div className="flex w-6 shrink-0 flex-col items-center gap-1 pt-2">
+              <span className="text-stone-400 dark:text-stone-600">{s.order}</span>
+              <button
+                type="button"
+                onClick={() => onDelete(s.id, s.amis)}
+                disabled={isPending}
+                aria-label="Delete sentence"
+                title="Delete sentence"
+                className="rounded-lg p-1 text-stone-400 transition active:scale-95 disabled:opacity-50 hover:text-red-600 dark:text-stone-600 dark:hover:text-red-400"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <input
                 type="text"
@@ -248,16 +260,6 @@ export function EditTextTab({ lessonNumber, sentences }: { lessonNumber: number;
                 className="rounded-lg border border-stone-300 px-2 py-1.5 text-stone-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400"
               />
             </div>
-            <button
-              type="button"
-              onClick={() => onDelete(s.id, s.amis)}
-              disabled={isPending}
-              aria-label="Delete sentence"
-              title="Delete sentence"
-              className="mt-1 shrink-0 rounded-lg p-1.5 text-stone-400 transition active:scale-95 disabled:opacity-50 hover:text-red-600 dark:text-stone-600 dark:hover:text-red-400"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
           </div>
         ))}
       </div>
