@@ -32,7 +32,13 @@ function collectSentences(lessons: Lesson[], selection: Selection): ExposureItem
     for (const section of lesson.sections) {
       if (!set.has(section.slug)) continue;
       for (const sentence of section.sentences) {
-        items.push({ lessonSlug: lesson.slug, sectionSlug: section.slug, sentence });
+        items.push({
+          lessonSlug: lesson.slug,
+          sectionSlug: section.slug,
+          lessonTitle: lesson.title,
+          sectionTitle: section.title,
+          sentence,
+        });
       }
     }
   }
@@ -176,12 +182,7 @@ export function HomeClient({ lessons }: { lessons: Lesson[] }) {
   };
 
   if (screen === "exposure") {
-    return (
-      <div className="flex flex-1 flex-col">
-        <BackBar onBack={closeSession} title="Exposure" />
-        <ExposureClient items={sessionItems} onFinish={closeSession} />
-      </div>
-    );
+    return <ExposureClient items={sessionItems} onFinish={closeSession} />;
   }
 
   if (screen === "test") {

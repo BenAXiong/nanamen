@@ -1,13 +1,32 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Eye, EyeOff, Pause } from "lucide-react";
+import { Check, Eye, EyeOff, Pause, X } from "lucide-react";
 import { AudioButton } from "@/components/AudioButton";
 import { useAudioPlayer } from "@/lib/useAudioPlayer";
 import { sectionKey, useNanamenState } from "@/lib/state";
 import type { Sentence } from "@/lib/content";
 
-export type ExposureItem = { lessonSlug: string; sectionSlug: string; sentence: Sentence };
+export type ExposureItem = {
+  lessonSlug: string;
+  sectionSlug: string;
+  lessonTitle: string;
+  sectionTitle: string;
+  sentence: Sentence;
+};
+
+// "Rekad 12" / "Lesson 12" -> "Lesson 12"; falls back to the raw title if no
+// number is found at all.
+function lessonHeaderLabel(title: string): string {
+  const match = title.match(/(?:Rekad|Lesson)\s*(\d+)/i) ?? title.match(/(\d+)/);
+  return match ? `Lesson ${match[1]}` : title;
+}
+
+// Section titles are stored as "Sakacecay - 入門詞彙・基本問候" (Amis name +
+// Zh subtitle) -- the header only wants the Amis name.
+function sectionHeaderLabel(title: string): string {
+  return title.split(/\s+/)[0] ?? title;
+}
 
 // Takes an already-assembled, already-ordered item list -- suspend
 // filtering and shuffle both happen once upstream (in HomeClient) when the
@@ -77,7 +96,22 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
   }, []);
 
   if (!sentence) {
-    return <p className="py-8 text-center text-stone-500 dark:text-stone-400">No sentences to review.</p>;
+    return (
+      <div className="flex flex-1 flex-col">
+        <div className="mb-3 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onFinish}
+            aria-label="Close"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Exposure</h1>
+        </div>
+        <p className="py-8 text-center text-stone-500 dark:text-stone-400">No sentences to review.</p>
+      </div>
+    );
   }
 
   const goTo = (next: number) => setIndex(next);
@@ -157,11 +191,26 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm text-stone-500 dark:text-stone-400">
-          {index + 1} / {items.length}
-        </span>
-        <div className="flex items-center gap-1">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={onFinish}
+            aria-label="Close"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div className="flex min-w-0 items-baseline gap-2">
+            <h1 className="truncate text-lg font-semibold text-stone-900 dark:text-stone-50">
+              {lessonHeaderLabel(current.lessonTitle)} · {sectionHeaderLabel(current.sectionTitle)}
+            </h1>
+            <span className="shrink-0 text-sm text-stone-500 dark:text-stone-400">
+              {index + 1} / {items.length}
+            </span>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => triggerExit("down", suspendAndAdvance)}
@@ -196,7 +245,7 @@ export function ExposureClient({ items, onFinish }: { items: ExposureItem[]; onF
       >
         <div key={sentence.id} className="w-full animate-[card-enter_180ms_ease-out]">
           <div
-            className="flex h-[38vh] w-full flex-col items-center justify-center gap-6 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900"
+            className="flex min-h-[38vh] w-full flex-col items-center justify-center gap-6 rounded-2xl border border-stone-200 bg-white px-4 py-8 text-center shadow-sm dark:border-stone-800 dark:bg-stone-900"
             style={{
               transform: `translate(${drag.x}px, ${drag.y}px) rotate(${cardRotation}deg)`,
               opacity: cardOpacity,
