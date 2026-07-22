@@ -287,7 +287,15 @@ export async function applySectionsToLesson(
   const updates = [...updatesById.entries()].map(([id, fields]) => ({ id, fields }));
   await updateAirtableRecords(updates, writeKey);
 
-  await writeManualConfig(lessonNumber, classDate, entries);
+  // Best-effort: this scratch file is a local-dev bookkeeping convenience
+  // (see scratch/README.md). On a deployed serverless filesystem it's
+  // read-only, so don't let that failure mask the Airtable update above,
+  // which is the part that actually matters.
+  try {
+    await writeManualConfig(lessonNumber, classDate, entries);
+  } catch (err) {
+    console.warn("writeManualConfig failed (non-fatal):", err);
+  }
 
   return { status: "ok", sectioned, renamedLesson };
 }
