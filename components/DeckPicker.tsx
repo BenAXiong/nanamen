@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Check, ChevronDown, ChevronRight, Circle } from "lucide-react";
-import type { Lesson } from "@/lib/content";
+import { Check, ChevronDown, ChevronRight, Circle, Play, Square } from "lucide-react";
+import type { Lesson, Section } from "@/lib/content";
 import { SectionActionsOverlay } from "@/components/SectionActionsOverlay";
 import { SentenceListClient } from "@/components/SentenceListClient";
 import { getSectionStatus, sectionKey, useNanamenState, type SectionStatus } from "@/lib/state";
+import { useAudioPlayer } from "@/lib/useAudioPlayer";
 import type { useDeckSelection } from "@/lib/useDeckSelection";
 
 const NEUTRAL = "text-stone-400 dark:text-stone-500";
@@ -58,6 +59,52 @@ function railLabel(title: string): string {
   return num ? `L${num[0]}` : title;
 }
 
+function sectionAudioUrls(section: Section): string[] {
+  return [...section.sentences]
+    .sort((a, b) => a.order - b.order)
+    .map((s) => s.audioUrl)
+    .filter((url): url is string => !!url);
+}
+
+function lessonAudioUrls(lesson: Lesson): string[] {
+  return lesson.sections.flatMap(sectionAudioUrls);
+}
+
+function playAllActiveClasses(tone: PickerTone) {
+  return tone === "amber" ? "bg-amber-500 text-white dark:bg-purple-500" : "bg-accent text-white";
+}
+
+// Icon-only, no label -- sits next to the lesson/section title it plays
+// through. Disabled (hidden) when there's no audio to sequence.
+function PlayAllButton({
+  playing,
+  disabled,
+  tone,
+  onClick,
+}: {
+  playing: boolean;
+  disabled: boolean;
+  tone: PickerTone;
+  onClick: () => void;
+}) {
+  if (disabled) return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      aria-label={playing ? "Stop playback" : "Play all"}
+      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition active:scale-95 ${
+        playing ? playAllActiveClasses(tone) : "text-stone-400 hover:text-accent dark:text-stone-500"
+      }`}
+    >
+      {playing ? <Square className="h-3 w-3 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+    </button>
+  );
+}
+
 function Toggle({ on, onToggle, tone }: { on: boolean; onToggle: () => void; tone: PickerTone }) {
   return (
     <button
@@ -93,6 +140,38 @@ export function DeckPicker({
   );
   const [openSectionSlug, setOpenSectionSlug] = useState<string | null>(null);
   const openLesson = lessons.find((l) => l.slug === openLessonSlug) ?? null;
+
+  // Sequences an ordered list of clip URLs through the single shared
+  // <audio> element from useAudioPlayer, one onEnded at a time -- same
+  // pattern as DialoguePracticeOverlay's playAll. Clicking the button for
+  // the sequence that's already playing stops it instead of restarting it.
+  const { play, stop } = useAudioPlayer();
+  const [playingKey, setPlayingKey] = useState<string | null>(null);
+  const playingKeyRef = useRef<string | null>(null);
+
+  const playSequence = (key: string, urls: string[]) => {
+    if (playingKeyRef.current === key) {
+      stop();
+      playingKeyRef.current = null;
+      setPlayingKey(null);
+      return;
+    }
+    playingKeyRef.current = key;
+    setPlayingKey(key);
+    let i = 0;
+    const advance = () => {
+      if (playingKeyRef.current !== key) return;
+      if (i >= urls.length) {
+        playingKeyRef.current = null;
+        setPlayingKey(null);
+        return;
+      }
+      const url = urls[i];
+      i++;
+      play(url, advance);
+    };
+    advance();
+  };
 
   // Long-press a section row for a quick-actions overlay (suspend all /
   // mark complete / mark tested), as an alternative to opening the section
@@ -169,7 +248,15 @@ export function DeckPicker({
               />
               <span className="truncate font-semibold text-stone-900 dark:text-stone-50">{openLesson.title}</span>
             </span>
-            <Toggle on={deck.lessonState(openLesson.slug) !== "none"} onToggle={() => deck.toggleLesson(openLesson.slug)} tone={tone} />
+            <span className="flex shrink-0 items-center gap-2">
+              <PlayAllButton
+                tone={tone}
+                playing={playingKey === `lesson:${openLesson.slug}`}
+                disabled={lessonAudioUrls(openLesson).length === 0}
+                onClick={() => playSequence(`lesson:${openLesson.slug}`, lessonAudioUrls(openLesson))}
+              />
+              <Toggle on={deck.lessonState(openLesson.slug) !== "none"} onToggle={() => deck.toggleLesson(openLesson.slug)} tone={tone} />
+            </span>
           </div>
 
           <div className="flex flex-col gap-1">
@@ -199,6 +286,14 @@ export function DeckPicker({
                       <CompletionBadge status={status} />
                       <span className="truncate">{section.title}</span>
                     </button>
+                    <PlayAllButton
+                      tone={tone}
+                      playing={playingKey === `section:${openLesson.slug}/${section.slug}`}
+                      disabled={sectionAudioUrls(section).length === 0}
+                      onClick={() =>
+                        playSequence(`section:${openLesson.slug}/${section.slug}`, sectionAudioUrls(section))
+                      }
+                    />
                     <Toggle
                       on={deck.isSectionSelected(openLesson.slug, section.slug)}
                       onToggle={() => deck.toggleSection(openLesson.slug, section.slug)}
